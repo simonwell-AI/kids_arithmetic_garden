@@ -1,5 +1,6 @@
 import type { GenerateQuestionOptions, Question } from './types';
 import type { Operation } from './types';
+import { getRandom, setRandom, resetRandom, hashString, createSeededRandom } from './random';
 import {
   hasCarry,
   hasBorrow,
@@ -13,7 +14,7 @@ const OPS: Operation[] = ['add', 'sub', 'mul', 'div'];
 
 function pickOperation(option: GenerateQuestionOptions['operation']): Operation {
   if (option === 'mixed') {
-    return OPS[Math.floor(Math.random() * OPS.length)];
+    return OPS[Math.floor(getRandom() * OPS.length)];
   }
   return option;
 }
@@ -168,5 +169,24 @@ export function generateQuestions(options: GenerateQuestionOptions): Question[] 
   return questions;
 }
 
+/** 用日期字串當 seed 產生「今日專屬」固定題組（同一天同一組題） */
+export function generateTodayQuestions(dateKey: string, count: number): Question[] {
+  const seed = hashString(dateKey);
+  const seeded = createSeededRandom(seed);
+  setRandom(seeded);
+  try {
+    return generateQuestions({
+      operation: 'mixed',
+      rangeMin: 0,
+      rangeMax: 20,
+      count,
+      difficulty: 'normal',
+    });
+  } finally {
+    resetRandom();
+  }
+}
+
 export * from './types';
 export * from './difficulty';
+export * from './random';

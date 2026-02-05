@@ -1,4 +1,5 @@
 import type { Operation, Difficulty } from './types';
+import { getRandom } from './random';
 
 /** Check if a+b has a carry in the ones place (digits sum >= 10). */
 export function hasCarry(a: number, b: number): boolean {
@@ -49,7 +50,7 @@ function pick<T>(arr: T[]): T {
 function randomInt(min: number, max: number): number {
   min = Math.ceil(min);
   max = Math.floor(max);
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+  return Math.floor(getRandom() * (max - min + 1)) + min;
 }
 
 /** Generate two addends for addition; if easy, ensure no carry. */

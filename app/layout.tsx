@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Nunito } from "next/font/google";
+import BGMControl from "@/src/components/BGMControl";
 import "./globals.css";
 
 const nunito = Nunito({
@@ -31,6 +32,7 @@ export default function RootLayout({
         className={`${nunito.variable} font-sans antialiased min-h-[100dvh] safe-area-padding`}
         suppressHydrationWarning
       >
+        <BGMControl />
         {children}
       </body>
     </html>
