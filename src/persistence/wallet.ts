@@ -1,6 +1,9 @@
 import { getDB, STORE_WALLET, WALLET_KEY, type WalletRecord } from "./db";
+import { getStreak } from "./dailyProgress";
 
 const DAILY_REWARD_COINS = 5;
+/** 連續 7 天完成今日任務的額外代幣 */
+const STREAK_7_BONUS_COINS = 10;
 
 function todayKey(): string {
   const now = new Date();
@@ -14,7 +17,7 @@ async function getWallet(): Promise<WalletRecord> {
   const db = await getDB();
   const record = (await db.get(STORE_WALLET, WALLET_KEY)) as WalletRecord | undefined;
   if (record) return record;
-  const defaultRecord: WalletRecord = { id: WALLET_KEY, coins: 0 };
+  const defaultRecord: WalletRecord = { id: WALLET_KEY, coins: 10 };
   await db.put(STORE_WALLET, defaultRecord);
   return defaultRecord;
 }
@@ -39,23 +42,27 @@ export async function addCoins(amount: number): Promise<number> {
   return next;
 }
 
-/** 今日任務完成時呼叫；若今日尚未領過則發放代幣並回傳 { claimed: true, newCoins } */
+/** 今日任務完成時呼叫；若今日尚未領過則發放代幣並回傳 { claimed, newCoins, rewardAmount, streakBonus? } */
 export async function claimDailyRewardIfEligible(): Promise<{
   claimed: boolean;
   newCoins: number;
   rewardAmount: number;
+  streakBonus: number;
 }> {
-  if (typeof window === "undefined") return { claimed: false, newCoins: 0, rewardAmount: 0 };
+  if (typeof window === "undefined") return { claimed: false, newCoins: 0, rewardAmount: 0, streakBonus: 0 };
   const today = todayKey();
   const w = await getWallet();
   if (w.lastRewardDate === today) {
-    return { claimed: false, newCoins: w.coins, rewardAmount: 0 };
+    return { claimed: false, newCoins: w.coins, rewardAmount: 0, streakBonus: 0 };
   }
-  const newCoins = w.coins + DAILY_REWARD_COINS;
+  const streak = await getStreak();
+  const streakBonus = streak >= 7 ? STREAK_7_BONUS_COINS : 0;
+  const totalReward = DAILY_REWARD_COINS + streakBonus;
+  const newCoins = w.coins + totalReward;
   await (await getDB()).put(STORE_WALLET, {
     ...w,
     coins: newCoins,
     lastRewardDate: today,
   });
-  return { claimed: true, newCoins, rewardAmount: DAILY_REWARD_COINS };
+  return { claimed: true, newCoins, rewardAmount: totalReward, streakBonus };
 }

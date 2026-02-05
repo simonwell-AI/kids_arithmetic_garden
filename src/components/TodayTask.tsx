@@ -51,9 +51,12 @@ export function TodayTask() {
         />
       </div>
       {done ? (
-        <p className="text-center text-sm font-semibold text-amber-800">
-          今日任務完成！{completedAt != null && "獲得今日徽章。"}
-        </p>
+        <div className="space-y-1 text-center">
+          <p className="text-sm font-semibold text-amber-800">
+            今日任務已完成！{completedAt != null && "獲得今日徽章。"}
+          </p>
+          <p className="text-xs text-amber-700">今天已經完成，明天再來～</p>
+        </div>
       ) : (
         <>
           <p className="mb-3 text-center text-sm text-amber-700">

@@ -64,8 +64,12 @@ export default function TodayTaskPage() {
     if (result.justCompleted) {
       const reward = await claimDailyRewardIfEligible();
       if (reward.claimed && reward.rewardAmount > 0) {
-        setRewardMessage(`今日任務完成！獲得 ${reward.rewardAmount} 代幣！`);
-        setTimeout(() => setRewardMessage(null), 3000);
+        const msg =
+          reward.streakBonus > 0
+            ? `今日任務完成！獲得 ${reward.rewardAmount} 代幣！（含連續 7 天獎勵 +${reward.streakBonus}）`
+            : `今日任務完成！獲得 ${reward.rewardAmount} 代幣！`;
+        setRewardMessage(msg);
+        setTimeout(() => setRewardMessage(null), 4000);
       }
     }
   }, [question, value, phase, startedAt]);

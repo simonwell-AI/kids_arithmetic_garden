@@ -9,7 +9,7 @@ async function getInventory(): Promise<InventoryRecord> {
     water: 0,
     fertilizerBasic: 0,
     fertilizerPremium: 0,
-    seeds: {},
+    seeds: { pink_flower: 1 },
     tools: {},
     wateringCans: {},
     backpacks: {},

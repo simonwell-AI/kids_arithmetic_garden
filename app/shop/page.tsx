@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getCoins } from "@/src/persistence";
+import { getCoins, addCoins } from "@/src/persistence";
 import { SHOP_CATALOG, SHOP_CATEGORIES, DEFAULT_BACKPACK_IMAGE } from "@/src/shop/catalog";
 import { purchaseItem, getInventoryCounts, TOOL_DISPLAY_NAMES, WATERING_CAN_DISPLAY_NAMES, BACKPACK_DISPLAY_NAMES } from "@/src/shop/purchase";
 import { setSelectedBackpack } from "@/src/persistence/inventory";
@@ -78,6 +78,11 @@ export default function ShopPage() {
     }
   }, [coins]);
 
+  const handleAddTestCoins = useCallback(async () => {
+    await addCoins(100);
+    load();
+  }, [load]);
+
   const handleBuy = useCallback(
     async (item: ShopItem) => {
       if (coins != null && coins < item.price) {
@@ -101,20 +106,29 @@ export default function ShopPage() {
 
   return (
     <div className="flex min-h-[100dvh] flex-col items-center bg-[var(--background)] px-4 py-8 sm:px-6 sm:py-10">
-      <div className="flex w-full max-w-lg flex-col gap-6">
-        <div className="flex items-center justify-between">
+        <div className="flex w-full max-w-lg flex-col gap-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <Link href="/" className="font-semibold text-[var(--primary)] hover:underline">
             ← 返回首頁
           </Link>
-          <span className="flex items-center gap-2 rounded-xl border-2 border-amber-200 bg-amber-50 px-4 py-2 font-bold text-amber-800 shadow-sm">
-            <Image src={COIN_IMAGE} alt="" width={24} height={24} className="object-contain animate-coin-pulse" unoptimized />
-            <span className="tabular-nums">
-              代幣：
-              <span className={coinNumberPop ? "inline-block animate-coin-number-pop" : undefined}>
-                {coins ?? "…"}
-              </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleAddTestCoins}
+              className="rounded-lg border border-amber-300 bg-amber-100 px-3 py-1.5 text-sm font-medium text-amber-800 hover:bg-amber-200"
+            >
+              加值 100（測試）
+            </button>
+            <span className="flex min-w-0 items-center gap-2 rounded-xl border-2 border-amber-200 bg-amber-50 px-4 py-2 font-bold text-amber-800 shadow-sm">
+            <Image src={COIN_IMAGE} alt="" width={24} height={24} className="shrink-0 object-contain animate-coin-pulse" unoptimized />
+            <span className="shrink-0">代幣：</span>
+            <span
+              className={`min-w-[1.5rem] shrink-0 text-right tabular-nums ${coinNumberPop ? "animate-coin-number-pop" : ""}`}
+            >
+              {coins ?? 0}
             </span>
           </span>
+          </div>
         </div>
         <h1 className="text-center text-2xl font-bold text-[var(--foreground)] sm:text-3xl">
           商店

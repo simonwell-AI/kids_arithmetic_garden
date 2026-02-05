@@ -5,4 +5,5 @@ export * from "./dailyProgress";
 export * from "./wallet";
 export * from "./inventory";
 export * from "./garden";
+export * from "./gardenVisit";
 export * from "./db";
