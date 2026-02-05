@@ -88,3 +88,41 @@ body {
 .animate-badge-glow {
   animation: badge-glow 1.5s ease-in-out 3;
 }
+
+/* 代幣圖示：輕微脈動，吸引注意 */
+@keyframes coin-pulse {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.1); filter: brightness(1.15); }
+}
+
+/* 代幣數字變化時短暫彈跳 */
+@keyframes coin-number-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.25); }
+  70% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+/* 商品圖片：上下輕微移動 */
+@keyframes product-image-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.animate-coin-pulse {
+  animation: coin-pulse 1.2s ease-in-out infinite;
+}
+
+.animate-coin-number-pop {
+  animation: coin-number-pop 0.4s ease-out forwards;
+}
+
+.animate-product-image-float {
+  animation: product-image-float 2s ease-in-out infinite;
+}
+
+/* 商品卡片懸停時圖片區輕微浮起 */
+.shop-product-card:hover .shop-product-image-wrap {
+  transform: scale(1.06);
+  transition: transform 0.25s ease-out;
+}

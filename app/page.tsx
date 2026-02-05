@@ -61,8 +61,8 @@ export default function Home() {
           選一個模式開始練習吧！
         </p>
         <div className="flex w-full max-w-md items-center justify-center gap-4 sm:max-w-lg">
-          <span className="flex items-center gap-2 rounded-xl border-2 border-amber-200 bg-amber-50 px-4 py-2 font-bold text-amber-800">
-            <Image src={COIN_IMAGE} alt="" width={24} height={24} className="object-contain" unoptimized />
+          <span className="flex items-center gap-2 rounded-xl border-2 border-amber-200 bg-amber-50 px-4 py-2 font-bold text-amber-800 shadow-sm">
+            <Image src={COIN_IMAGE} alt="" width={24} height={24} className="object-contain animate-coin-pulse" unoptimized />
             代幣：{coins ?? "…"}
           </span>
           <Link href="/shop" className="rounded-xl border-2 border-[var(--primary)] bg-white px-4 py-2 font-semibold text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white">

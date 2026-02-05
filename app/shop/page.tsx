@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getCoins } from "@/src/persistence";
 import { SHOP_CATALOG, SHOP_CATEGORIES, DEFAULT_BACKPACK_IMAGE } from "@/src/shop/catalog";
 import { purchaseItem, getInventoryCounts, TOOL_DISPLAY_NAMES, WATERING_CAN_DISPLAY_NAMES, BACKPACK_DISPLAY_NAMES } from "@/src/shop/purchase";
@@ -41,6 +41,8 @@ export default function ShopPage() {
   const [coins, setCoins] = useState<number | null>(null);
   const [inventory, setInventory] = useState<Awaited<ReturnType<typeof getInventoryCounts>> | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [coinNumberPop, setCoinNumberPop] = useState(false);
+  const prevCoinsRef = useRef<number | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -66,6 +68,15 @@ export default function ShopPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (coins != null && coins !== prevCoinsRef.current) {
+      prevCoinsRef.current = coins;
+      setCoinNumberPop(true);
+      const t = setTimeout(() => setCoinNumberPop(false), 420);
+      return () => clearTimeout(t);
+    }
+  }, [coins]);
 
   const handleBuy = useCallback(
     async (item: ShopItem) => {
@@ -95,22 +106,27 @@ export default function ShopPage() {
           <Link href="/" className="font-semibold text-[var(--primary)] hover:underline">
             ← 返回首頁
           </Link>
-          <span className="flex items-center gap-2 rounded-xl border-2 border-amber-200 bg-amber-50 px-4 py-2 font-bold text-amber-800">
-            <Image src={COIN_IMAGE} alt="" width={24} height={24} className="object-contain" unoptimized />
-            代幣：{coins ?? "…"}
+          <span className="flex items-center gap-2 rounded-xl border-2 border-amber-200 bg-amber-50 px-4 py-2 font-bold text-amber-800 shadow-sm">
+            <Image src={COIN_IMAGE} alt="" width={24} height={24} className="object-contain animate-coin-pulse" unoptimized />
+            <span className="tabular-nums">
+              代幣：
+              <span className={coinNumberPop ? "inline-block animate-coin-number-pop" : undefined}>
+                {coins ?? "…"}
+              </span>
+            </span>
           </span>
         </div>
         <h1 className="text-center text-2xl font-bold text-[var(--foreground)] sm:text-3xl">
           商店
         </h1>
         {inventory && (
-          <div className="flex items-center gap-4 rounded-2xl border-2 border-gray-200 bg-white p-4 shadow-sm">
-            <div className="relative h-16 w-16 shrink-0 sm:h-20 sm:w-20">
+          <div className="flex items-center gap-4 rounded-2xl border-2 border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg sm:h-20 sm:w-20">
               <Image
                 src={BACKPACK_IMAGE_PATHS[inventory.selectedBackpackId ?? "green_backpack"] ?? DEFAULT_BACKPACK_IMAGE}
                 alt=""
                 fill
-                className="object-contain"
+                className="object-contain transition-transform duration-300 hover:scale-110"
                 unoptimized
               />
             </div>
@@ -186,22 +202,22 @@ export default function ShopPage() {
                 {items.map((item) => (
                   <li
                     key={item.id}
-                    className="flex flex-col rounded-2xl border-2 border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+                    className="shop-product-card flex flex-col rounded-2xl border-2 border-gray-200 bg-white p-4 shadow-sm transition-all duration-200 hover:border-amber-200 hover:shadow-lg"
                   >
                     <div className="mb-2 flex items-center gap-3">
-                      <div className="relative h-12 w-12 shrink-0">
+                      <div className="shop-product-image-wrap relative h-12 w-12 shrink-0 overflow-hidden rounded-lg transition-transform duration-200">
                         <Image
                           src={getShopItemIcon(item)}
                           alt=""
                           fill
-                          className="object-contain"
+                          className="object-contain animate-product-image-float"
                           unoptimized
                         />
                       </div>
                       <span className="font-bold text-[var(--foreground)]">{item.name}</span>
                     </div>
                     <span className="mb-3 flex items-center gap-1.5 text-sm text-gray-600">
-                      <Image src={COIN_IMAGE} alt="" width={18} height={18} className="object-contain" unoptimized />
+                      <Image src={COIN_IMAGE} alt="" width={18} height={18} className="object-contain animate-coin-pulse" unoptimized />
                       {item.price} 代幣
                     </span>
                     <button
@@ -212,7 +228,7 @@ export default function ShopPage() {
                         (coins < item.price ||
                           (item.type !== "backpack_expand" && backpackFull))
                       }
-                      className="mt-auto min-h-[44px] rounded-xl bg-[var(--primary)] px-4 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 hover:bg-[var(--primary-hover)]"
+                      className="mt-auto min-h-[44px] rounded-xl bg-[var(--primary)] px-4 font-semibold text-white transition-transform active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 hover:bg-[var(--primary-hover)]"
                     >
                       購買
                     </button>
