@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+:root {
+  --background: #fef9e7;
+  --foreground: #1a1a1a;
+  --primary: #3498db;
+  --primary-hover: #2980b9;
+  --success: #27ae60;
+  --error: #e74c3c;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-nunito), ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  min-height: 100dvh;
+}
+
+/* 自適應：手機／平板／PC 安全區域，避免 notch 與底部橫條遮擋 */
+.safe-area-padding {
+  padding-left: env(safe-area-inset-left, 0);
+  padding-right: env(safe-area-inset-right, 0);
+  padding-top: env(safe-area-inset-top, 0);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* 各尺寸下內容最大寬度，避免大螢幕過寬 */
+.container-app {
+  width: 100%;
+  max-width: 28rem; /* 448px，手機／小平板單欄 */
+}
+@media (min-width: 768px) {
+  .container-app {
+    max-width: 32rem; /* 512px，平板 */
+  }
+}
+@media (min-width: 1024px) {
+  .container-app {
+    max-width: 36rem; /* 576px，PC */
+  }
+}
+
+/* 答對／過關慶祝動畫 */
+@keyframes celebrate-pop {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes star-fall {
+  0% {
+    transform: translateY(-100%) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0.3;
+  }
+}
+
+@keyframes sparkle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.2); }
+}
+
+@keyframes badge-glow {
+  0%, 100% { filter: brightness(1); box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.4); }
+  50% { filter: brightness(1.1); box-shadow: 0 0 24px 8px rgba(234, 179, 8, 0.3); }
+}
+
+.animate-celebrate-pop {
+  animation: celebrate-pop 0.5s ease-out forwards;
+}
+
+.animate-sparkle {
+  animation: sparkle 0.6s ease-in-out 2;
+}
+
+.animate-badge-glow {
+  animation: badge-glow 1.5s ease-in-out 3;
+}
