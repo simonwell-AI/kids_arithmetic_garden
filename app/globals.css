@@ -296,6 +296,28 @@ body {
   animation: garden-weed-snip 0.7s ease-out forwards;
 }
 
+@keyframes garden-weed-scissors-snap {
+  0% { transform: translate(0, 0) rotate(12deg); opacity: 0.95; }
+  30% { transform: translate(-6%, 4%) rotate(-18deg); opacity: 1; }
+  60% { transform: translate(2%, 10%) rotate(10deg); opacity: 1; }
+  100% { transform: translate(0, 12%) rotate(6deg); opacity: 0.95; }
+}
+
+.garden-weed-scissors-wrap {
+  position: absolute;
+  top: -4%;
+  left: 4%;
+  width: 86px;
+  height: 86px;
+  z-index: 12;
+  pointer-events: none;
+}
+
+.garden-weed-scissors-snap {
+  transform-origin: 25% 20%;
+  animation: garden-weed-scissors-snap 0.9s ease-in-out forwards;
+}
+
 /* 花園：鬆土動畫 */
 @keyframes garden-fork-shake {
   0%, 100% { transform: translateX(0); }
@@ -429,4 +451,48 @@ body {
   display: inline-flex;
   margin-right: 0.15rem;
   animation: garden-action-bob 2.2s ease-in-out infinite;
+}
+
+/* 花園：營養土動畫 */
+@keyframes garden-soil-bag-pour {
+  0% { transform: translate(0, 0) rotate(8deg); opacity: 0.95; }
+  30% { transform: translate(-6%, 6%) rotate(-18deg); opacity: 1; }
+  60% { transform: translate(2%, 10%) rotate(10deg); opacity: 1; }
+  100% { transform: translate(0, 12%) rotate(6deg); opacity: 0.95; }
+}
+
+@keyframes garden-soil-particle {
+  0% { transform: translateY(-6px) scale(0.6); opacity: 0; }
+  35% { transform: translateY(2px) scale(1); opacity: 0.9; }
+  100% { transform: translateY(16px) scale(0.8); opacity: 0; }
+}
+
+@keyframes garden-soil-sparkle {
+  0% { transform: scale(0.4) rotate(0deg); opacity: 0; }
+  40% { transform: scale(1.3) rotate(30deg); opacity: 1; }
+  100% { transform: scale(0.6) rotate(90deg); opacity: 0; }
+}
+
+.garden-soil-bag-wrap {
+  position: absolute;
+  top: -4%;
+  right: 4%;
+  width: 86px;
+  height: 86px;
+  z-index: 12;
+  pointer-events: none;
+}
+
+.garden-soil-bag-pour {
+  transform-origin: 75% 20%;
+  animation: garden-soil-bag-pour 1.4s ease-in-out forwards;
+}
+
+.garden-soil-particle {
+  animation: garden-soil-particle 1.1s ease-out forwards;
+}
+
+.garden-soil-sparkle {
+  animation: garden-soil-sparkle 1.2s ease-out forwards;
+  box-shadow: 0 0 10px rgba(253, 230, 138, 0.9);
 }

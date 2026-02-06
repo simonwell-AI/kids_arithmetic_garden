@@ -44,7 +44,30 @@ export default function BGMControl() {
     setTrack(storedTrack);
     const audio = ensureAudio();
     audio.src = TRACKS[storedTrack];
-    if (storedPlaying) audio.play().catch(() => {});
+    let fallbackBound = false;
+    const tryPlay = () => audio.play().catch(() => {});
+    const handleFirstUserGesture = () => {
+      if (!storedPlaying) return;
+      tryPlay();
+      if (fallbackBound) {
+        window.removeEventListener("pointerdown", handleFirstUserGesture);
+        window.removeEventListener("keydown", handleFirstUserGesture);
+        fallbackBound = false;
+      }
+    };
+    if (storedPlaying) {
+      audio.play().catch(() => {
+        fallbackBound = true;
+        window.addEventListener("pointerdown", handleFirstUserGesture, { once: true });
+        window.addEventListener("keydown", handleFirstUserGesture, { once: true });
+      });
+    }
+    return () => {
+      if (fallbackBound) {
+        window.removeEventListener("pointerdown", handleFirstUserGesture);
+        window.removeEventListener("keydown", handleFirstUserGesture);
+      }
+    };
   }, [ensureAudio]);
 
   const togglePlayPause = useCallback(() => {

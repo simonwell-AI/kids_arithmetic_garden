@@ -18,10 +18,24 @@ function buildCards(): Card[] {
   return cards;
 }
 
+function shuffle(cards: Card[]): Card[] {
+  const copy = [...cards];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
 export function Flashcard() {
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
-  const cards = useMemo(() => buildCards(), []);
+  const [randomMode, setRandomMode] = useState(false);
+  const baseCards = useMemo(() => buildCards(), []);
+  const cards = useMemo(
+    () => (randomMode ? shuffle(baseCards) : baseCards),
+    [baseCards, randomMode]
+  );
   const card = cards[index];
 
   const flip = useCallback(() => setFlipped((f) => !f), []);
@@ -33,12 +47,30 @@ export function Flashcard() {
     setIndex((i) => (i >= cards.length - 1 ? 0 : i + 1));
     setFlipped(false);
   }, [cards.length]);
+  const toggleRandom = useCallback(() => {
+    setRandomMode((v) => !v);
+    setIndex(0);
+    setFlipped(false);
+  }, []);
 
   return (
     <div className="flex w-full max-w-md flex-col items-center gap-6 sm:max-w-lg">
-      <p className="text-sm font-semibold text-gray-600">
-        {index + 1} / {cards.length}
-      </p>
+      <div className="flex w-full max-w-[320px] items-center justify-between">
+        <p className="text-sm font-semibold text-gray-600">
+          {index + 1} / {cards.length}
+        </p>
+        <button
+          type="button"
+          onClick={toggleRandom}
+          className={`min-h-[36px] rounded-full px-4 text-xs font-bold shadow-sm transition ${
+            randomMode
+              ? "bg-emerald-200 text-emerald-900"
+              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+          }`}
+        >
+          {randomMode ? "隨機模式：開" : "隨機模式：關"}
+        </button>
+      </div>
       <button
         type="button"
         onClick={flip}

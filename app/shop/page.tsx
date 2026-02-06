@@ -9,6 +9,7 @@ import { purchaseItem, getInventoryCounts, TOOL_DISPLAY_NAMES, WATERING_CAN_DISP
 import { setSelectedBackpack } from "@/src/persistence/inventory";
 import { getSeedIconPath } from "@/src/garden/assets";
 import type { ShopItem } from "@/src/shop/catalog";
+import { playPurchaseSound } from "@/src/lib/sound";
 
 const COIN_IMAGE = "/garden-assets/coins/coin.png";
 
@@ -96,6 +97,7 @@ export default function ShopPage() {
       if (result.success) {
         setMessage(`購買成功：${item.name}`);
         setMessageType("success");
+        playPurchaseSound();
         load();
       } else {
         setMessage(result.message ?? "購買失敗");

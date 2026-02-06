@@ -144,19 +144,32 @@ export function SpeedQuiz() {
     );
   }
 
+  const timeLeft = Math.ceil(timeLeftMs / 1000);
+  const timePct = Math.max(0, Math.min(100, (timeLeftMs / DURATION_MS) * 100));
+
   return (
-    <div className="flex flex-col items-center gap-6">
-      <div className="flex w-full max-w-md items-center justify-between">
-        <span className="text-lg font-bold text-amber-700">
-          {Math.ceil(timeLeftMs / 1000)} 秒
-        </span>
-        <span className="text-lg font-bold text-[var(--primary)]">
-          答對 {correctCount} 題
-        </span>
+    <div className="flex w-full max-w-lg flex-col items-center gap-6">
+      <div className="w-full rounded-2xl bg-white/70 p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <span className="rounded-full bg-amber-100 px-4 py-1 text-sm font-bold text-amber-800">
+            ⏱ {timeLeft} 秒
+          </span>
+          <span className="rounded-full bg-blue-100 px-4 py-1 text-sm font-bold text-blue-800">
+            ✅ 答對 {correctCount} 題
+          </span>
+        </div>
+        <div className="h-2 w-full overflow-hidden rounded-full bg-amber-100">
+          <div
+            className="h-full rounded-full bg-amber-400 transition-all duration-300"
+            style={{ width: `${timePct}%` }}
+          />
+        </div>
       </div>
       {question && (
         <>
-          <QuestionCard question={question} answerInput={value} />
+          <div className="w-full rounded-2xl bg-white/80 p-5 shadow-lg">
+            <QuestionCard question={question} answerInput={value} />
+          </div>
           <NumericKeypad
             value={value}
             onChange={setValue}

@@ -19,8 +19,9 @@ import { getInventoryState } from "@/src/persistence/inventory";
 import { getHasWeeds, setLastGardenVisit } from "@/src/persistence/gardenVisit";
 import { getSeedGrowthImagePath, SEED_NAMES } from "@/src/garden/assets";
 import { SHOP_CATALOG } from "@/src/shop/catalog";
+import { playWaterSound, playSpraySound, playSoilSound, playSparkleSound, playScissorSound } from "@/src/lib/sound";
 
-type GardenAnimating = "water" | "fertilize" | "weed" | "fork" | "mist" | null;
+type GardenAnimating = "water" | "fertilize" | "weed" | "fork" | "mist" | "soil" | null;
 
 const ANIMATION_DURATION_MS = 1200;
 /** 澆水動畫較長：水壺傾倒 + 水流，總時長 */
@@ -31,6 +32,7 @@ const FERTILIZE_ANIMATION_DURATION_MS = 3200;
 const FORK_ANIMATION_DURATION_MS = 1200;
 /** 噴霧動畫：霧氣飄散 */
 const MIST_ANIMATION_DURATION_MS = 1400;
+const SOIL_ANIMATION_DURATION_MS = 1400;
 const FORK_COOLDOWN_MS = 0;
 const MIST_COOLDOWN_MS = 0;
 /** 商店消耗品圖示（與商店顯示一致） */
@@ -46,14 +48,14 @@ const POTTING_SOIL_IMAGE = "/garden-assets/gargen_tools/Potting Soil.png";
 
 const GRASS_BASE = "/garden-assets/grass";
 const GRASS_IMAGES = [1, 2, 3, 4, 5, 6, 7, 8].map((n) => `${GRASS_BASE}/grass_${n}.png`);
-/** 野草疊層：每株野草的位置與使用的圖片索引 */
+/** 野草疊層：集中在盆土區域 */
 const WEED_POSITIONS: { top?: string; bottom?: string; left?: string; right?: string; size: number }[] = [
-  { top: "2%", left: "8%", size: 28 },
-  { top: "5%", right: "5%", size: 32 },
-  { bottom: "18%", left: "5%", size: 26 },
-  { bottom: "22%", right: "10%", size: 30 },
-  { top: "35%", left: "0%", size: 24 },
-  { top: "40%", right: "2%", size: 28 },
+  { bottom: "12%", left: "8%", size: 26 },
+  { bottom: "10%", right: "8%", size: 28 },
+  { bottom: "22%", left: "20%", size: 22 },
+  { bottom: "24%", right: "18%", size: 24 },
+  { bottom: "30%", left: "40%", size: 22 },
+  { bottom: "28%", right: "42%", size: 22 },
 ];
 
 /** 從庫存取得第一個擁有的水壺圖片路徑（用於澆水動畫）；若無則用目錄中第一個水壺 */
@@ -153,11 +155,12 @@ export default function GardenPage() {
     const result = await water();
     if (result.success) {
       setAnimating("water");
+      const soundMs = await playWaterSound();
       showMessage("澆水成功～");
       setTimeout(() => {
         setAnimating(null);
         load();
-      }, WATER_ANIMATION_DURATION_MS);
+      }, Math.max(WATER_ANIMATION_DURATION_MS, soundMs));
     } else {
       showMessage(result.message ?? "澆水失敗");
     }
@@ -169,12 +172,14 @@ export default function GardenPage() {
       if (result.success) {
         setFertilizeType(type);
         setAnimating("fertilize");
+        const soundMs =
+          type === "premium" ? await playSparkleSound() : await playSoilSound();
         showMessage(type === "basic" ? "施用一般肥料成功～" : "施用高級肥料成功～");
         setTimeout(() => {
           setAnimating(null);
           setFertilizeType(null);
           load();
-        }, FERTILIZE_ANIMATION_DURATION_MS);
+        }, Math.max(FERTILIZE_ANIMATION_DURATION_MS, soundMs));
       } else {
         showMessage(result.message ?? "施肥失敗");
       }
@@ -187,6 +192,7 @@ export default function GardenPage() {
     if (result.success) {
       setHasWeeds(false);
       setAnimating("weed");
+      await playScissorSound();
       showMessage("雜草修剪完成～ 成長 +0.1");
       setTimeout(() => setAnimating(null), 700);
     } else {
@@ -198,11 +204,12 @@ export default function GardenPage() {
     const result = await loosenSoil();
     if (result.success) {
       setAnimating("fork");
+      const soundMs = await playSoilSound();
       showMessage("鬆土完成，成長 +0.12");
       setTimeout(() => {
         setAnimating(null);
         load();
-      }, FORK_ANIMATION_DURATION_MS);
+      }, Math.max(FORK_ANIMATION_DURATION_MS, soundMs));
     } else {
       showMessage(result.message ?? "鬆土失敗");
     }
@@ -212,11 +219,12 @@ export default function GardenPage() {
     const result = await mistPlant();
     if (result.success) {
       setAnimating("mist");
+      const soundMs = await playSpraySound();
       showMessage("噴霧保濕完成～ 成長 +0.05");
       setTimeout(() => {
         setAnimating(null);
         load();
-      }, MIST_ANIMATION_DURATION_MS);
+      }, Math.max(MIST_ANIMATION_DURATION_MS, soundMs));
     } else {
       showMessage(result.message ?? "噴霧失敗");
     }
@@ -225,6 +233,7 @@ export default function GardenPage() {
   const handleTrowel = useCallback(async () => {
     const result = await repotPlant();
     if (result.success) {
+      playSoilSound();
       showMessage("換盆整理完成，成長 +0.5");
       load();
     } else {
@@ -235,8 +244,13 @@ export default function GardenPage() {
   const handleSoil = useCallback(async () => {
     const result = await applyPottingSoil();
     if (result.success) {
+      setAnimating("soil");
+      const soundMs = await playSoilSound();
       showMessage("營養土已添加，成長加速 +10%");
-      load();
+      setTimeout(() => {
+        setAnimating(null);
+        load();
+      }, Math.max(SOIL_ANIMATION_DURATION_MS, soundMs));
     } else {
       showMessage(result.message ?? "添加失敗");
     }
@@ -340,7 +354,7 @@ export default function GardenPage() {
               />
               {hasWeeds && (
                 <div
-                  className={`pointer-events-none absolute inset-0 overflow-hidden rounded-full bg-green-900/20 ${animating === "weed" ? "garden-animate-weed garden-weed-layer" : ""}`}
+                  className={`pointer-events-none absolute bottom-0 left-0 right-0 h-[45%] overflow-hidden ${animating === "weed" ? "garden-animate-weed garden-weed-layer" : ""}`}
                   aria-hidden
                 >
                   {WEED_POSITIONS.map((pos, i) => (
@@ -495,6 +509,42 @@ export default function GardenPage() {
                   ))}
                 </div>
               )}
+              {animating === "soil" && (
+                <div className="garden-animate-soil pointer-events-none absolute inset-0 z-10 overflow-visible">
+                  <div className="garden-soil-bag-wrap">
+                    <Image
+                      src={POTTING_SOIL_IMAGE}
+                      alt=""
+                      width={86}
+                      height={86}
+                      className="garden-soil-bag-pour object-contain"
+                      unoptimized
+                    />
+                  </div>
+                  {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+                    <span
+                      key={`soil-${i}`}
+                      className="garden-soil-particle absolute h-2.5 w-2.5 rounded-full bg-amber-700/80"
+                      style={{
+                        top: `${34 + (i % 4) * 14}%`,
+                        left: `${26 + (i % 4) * 14}%`,
+                        animationDelay: `${0.2 + i * 0.1}s`,
+                      }}
+                    />
+                  ))}
+                  {[0, 1, 2, 3].map((i) => (
+                    <span
+                      key={`soil-spark-${i}`}
+                      className="garden-soil-sparkle absolute h-3 w-3 rounded-sm bg-amber-100"
+                      style={{
+                        top: `${30 + (i % 2) * 18}%`,
+                        left: `${38 + i * 10}%`,
+                        animationDelay: `${0.35 + i * 0.12}s`,
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
               {animating === "fertilize" && (
                 <div
                   className={`pointer-events-none absolute inset-0 z-10 overflow-visible ${fertilizeType === "premium" ? "garden-animate-fertilize-premium" : "garden-animate-fertilize-basic"}`}
@@ -554,6 +604,16 @@ export default function GardenPage() {
               )}
               {animating === "weed" && (
                 <div className="garden-animate-weed pointer-events-none absolute inset-0 z-10 overflow-visible">
+                  <div className="garden-weed-scissors-wrap">
+                    <Image
+                      src={GARDEN_SCISSORS_IMAGE}
+                      alt=""
+                      width={86}
+                      height={86}
+                      className="garden-weed-scissors-snap object-contain"
+                      unoptimized
+                    />
+                  </div>
                   {[0, 1, 2].map((i) => (
                     <span
                       key={`snip-${i}`}

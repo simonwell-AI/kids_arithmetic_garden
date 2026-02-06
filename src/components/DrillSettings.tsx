@@ -20,7 +20,7 @@ const DEFAULT_SETTINGS: DrillSettingsState = {
   count: 10,
   difficulty: "normal",
   adaptive: false,
-  speech: false,
+  speech: true,
 };
 
 export interface DrillSettingsProps {
