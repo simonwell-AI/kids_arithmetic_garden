@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { getTodayProgress, getStreak, TODAY_SET_SIZE } from "@/src/persistence/dailyProgress";
 
@@ -71,9 +72,15 @@ export function TodayTask() {
         </>
       )}
       {streak > 0 && (
-        <p className="mt-2 text-center text-xs font-medium text-amber-700">
-          已連續 {streak} 天完成 {streak >= 7 && "🏅"}
-        </p>
+        <div className="mt-2 flex flex-col items-center gap-1 text-amber-700">
+          <div className="flex items-center gap-2 text-xs font-semibold">
+            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-amber-200/80 animate-badge-glow">
+              <Image src="/celebration-assets/star-medal.png" alt="獎牌" width={20} height={20} className="object-contain" unoptimized />
+            </span>
+            已連續 {streak} 天完成
+          </div>
+          <span className="text-[11px] text-amber-600">連續達成可獲得獎牌加成</span>
+        </div>
       )}
     </div>
   );

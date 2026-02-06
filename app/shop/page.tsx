@@ -41,6 +41,7 @@ export default function ShopPage() {
   const [coins, setCoins] = useState<number | null>(null);
   const [inventory, setInventory] = useState<Awaited<ReturnType<typeof getInventoryCounts>> | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageType, setMessageType] = useState<"success" | "error" | null>(null);
   const [coinNumberPop, setCoinNumberPop] = useState(false);
   const prevCoinsRef = useRef<number | null>(null);
 
@@ -87,15 +88,18 @@ export default function ShopPage() {
     async (item: ShopItem) => {
       if (coins != null && coins < item.price) {
         setMessage("代幣不足");
+        setMessageType("error");
         setTimeout(() => setMessage(null), 2000);
         return;
       }
       const result = await purchaseItem(item);
       if (result.success) {
         setMessage(`購買成功：${item.name}`);
+        setMessageType("success");
         load();
       } else {
         setMessage(result.message ?? "購買失敗");
+        setMessageType("error");
       }
       setTimeout(() => setMessage(null), 2000);
     },
@@ -133,6 +137,18 @@ export default function ShopPage() {
         <h1 className="text-center text-2xl font-bold text-[var(--foreground)] sm:text-3xl">
           商店
         </h1>
+        {message && (
+          <div
+            className={`fixed left-1/2 top-1/2 z-30 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl px-5 py-4 text-center text-base font-bold shadow-xl ${
+              messageType === "success"
+                ? "bg-emerald-500 text-white"
+                : "bg-rose-500 text-white"
+            }`}
+            role="status"
+          >
+            {message}
+          </div>
+        )}
         {inventory && (
           <div className="flex items-center gap-4 rounded-2xl border-2 border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
             <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg sm:h-20 sm:w-20">
@@ -200,11 +216,6 @@ export default function ShopPage() {
               </p>
             </div>
           </div>
-        )}
-        {message && (
-          <p className="rounded-xl bg-amber-100 px-4 py-2 text-center font-semibold text-amber-900" role="status">
-            {message}
-          </p>
         )}
         <div className="flex flex-col gap-8">
           {getItemsByCategory(SHOP_CATALOG).map(({ key, label, items }) => (

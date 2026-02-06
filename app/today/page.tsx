@@ -5,16 +5,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { QuestionCard } from "@/src/components/QuestionCard";
 import { NumericKeypad } from "@/src/components/NumericKeypad";
 import { FeedbackToast } from "@/src/components/FeedbackToast";
+import { CelebrationParticles } from "@/src/components/CelebrationParticles";
 import { generateTodayQuestions } from "@/src/generator";
 import type { Question } from "@/src/generator";
 import {
   getTodayDateString,
   getTodayProgress,
-  completeTodayQuestion,
   TODAY_SET_SIZE,
 } from "@/src/persistence/dailyProgress";
-import { claimDailyRewardIfEligible } from "@/src/persistence/wallet";
-import { playFeedbackSound } from "@/src/lib/sound";
+import { advanceDailyProgressAndClaimReward } from "@/src/persistence/dailyReward";
+import { playFeedbackSound, playCelebrationSound } from "@/src/lib/sound";
+import { speakText, stopSpeaking } from "@/src/lib/speech";
 
 export default function TodayTaskPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -26,10 +27,33 @@ export default function TodayTaskPage() {
   const [lastTimeMs, setLastTimeMs] = useState(0);
   const [startedAt, setStartedAt] = useState(0);
   const [rewardMessage, setRewardMessage] = useState<string | null>(null);
+  const [showCelebration, setShowCelebration] = useState(false);
   const [phase, setPhase] = useState<"loading" | "questions" | "done" | "already">("loading");
 
   const dateKey = useMemo(() => getTodayDateString(), []);
   const question = questions[index];
+
+  const questionSpeechText = useMemo(() => {
+    if (!question) return "";
+    switch (question.op) {
+      case "add":
+        return `${question.a} 加 ${question.b} 等於多少`;
+      case "sub":
+        return `${question.a} 減 ${question.b} 等於多少`;
+      case "mul":
+        return `${question.a} 乘以 ${question.b} 等於多少`;
+      case "div":
+        return `${question.a} 除以 ${question.b} 等於多少`;
+      default:
+        return `${question.a} 加 ${question.b} 等於多少`;
+    }
+  }, [question]);
+
+  const handleSpeak = useCallback(() => {
+    if (!questionSpeechText) return;
+    stopSpeaking();
+    speakText(questionSpeechText);
+  }, [questionSpeechText]);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,17 +84,20 @@ export default function TodayTaskPage() {
     setLastCorrect(correct);
     setLastTimeMs(elapsed);
     setShowFeedback(true);
-    const result = await completeTodayQuestion();
+    const result = await advanceDailyProgressAndClaimReward();
+    const reward = result.reward;
     if (result.justCompleted) {
-      const reward = await claimDailyRewardIfEligible();
-      if (reward.claimed && reward.rewardAmount > 0) {
-        const msg =
-          reward.streakBonus > 0
-            ? `今日任務完成！獲得 ${reward.rewardAmount} 代幣！（含連續 7 天獎勵 +${reward.streakBonus}）`
-            : `今日任務完成！獲得 ${reward.rewardAmount} 代幣！`;
-        setRewardMessage(msg);
-        setTimeout(() => setRewardMessage(null), 4000);
-      }
+      setShowCelebration(true);
+      playCelebrationSound();
+      setTimeout(() => setShowCelebration(false), 3000);
+    }
+    if (reward?.claimed && reward.rewardAmount > 0) {
+      const msg =
+        reward.streakBonus > 0
+          ? `今日任務完成！獲得 ${reward.rewardAmount} 代幣！（含連續 7 天獎勵 +${reward.streakBonus}）`
+          : `今日任務完成！獲得 ${reward.rewardAmount} 代幣！`;
+      setRewardMessage(msg);
+      setTimeout(() => setRewardMessage(null), 4000);
     }
   }, [question, value, phase, startedAt]);
 
@@ -101,9 +128,9 @@ export default function TodayTaskPage() {
           <p className="text-center text-gray-600">你今天已經完成今日題組，明天再來吧！</p>
           <Link
             href="/"
-            className="min-h-[48px] rounded-xl bg-[var(--primary)] px-6 font-bold text-white hover:bg-[var(--primary-hover)]"
+            className="min-h-[52px] rounded-full bg-[var(--primary)] px-8 font-bold text-white shadow-md transition hover:bg-[var(--primary-hover)] active:scale-[0.98]"
           >
-            回首頁
+            返回首頁
           </Link>
         </div>
       </div>
@@ -121,9 +148,9 @@ export default function TodayTaskPage() {
           )}
           <Link
             href="/"
-            className="min-h-[48px] rounded-xl bg-[var(--primary)] px-6 font-bold text-white hover:bg-[var(--primary-hover)]"
+            className="min-h-[52px] rounded-full bg-[var(--primary)] px-8 font-bold text-white shadow-md transition hover:bg-[var(--primary-hover)] active:scale-[0.98]"
           >
-            回首頁
+            返回首頁
           </Link>
         </div>
       </div>
@@ -132,6 +159,7 @@ export default function TodayTaskPage() {
 
   return (
     <div className="flex min-h-[100dvh] flex-col items-center bg-[var(--background)] px-4 py-8 sm:px-6 sm:py-10">
+      {showCelebration && <CelebrationParticles />}
       <div className="flex w-full max-w-lg flex-col items-center gap-6">
         <div className="flex w-full items-center justify-between">
           <Link href="/" className="font-semibold text-[var(--primary)] hover:underline">
@@ -146,6 +174,13 @@ export default function TodayTaskPage() {
         </h1>
         {question && (
           <>
+            <button
+              type="button"
+              onClick={handleSpeak}
+              className="self-center rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900 shadow-sm hover:bg-amber-100"
+            >
+              🔊 朗讀題目
+            </button>
             <QuestionCard question={question} answerInput={value} />
             <NumericKeypad
               value={value}

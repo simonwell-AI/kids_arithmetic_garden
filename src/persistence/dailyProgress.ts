@@ -1,7 +1,7 @@
 import { getDB, STORE_DAILY_PROGRESS, type DailyProgressRecord } from "./db";
 
-/** 今日題組題數（只有完成這組才計入今日任務） */
-export const TODAY_SET_SIZE = 15;
+/** 每日任務題數 */
+export const TODAY_SET_SIZE = 20;
 
 export function getTodayDateString(): string {
   const now = new Date();
@@ -31,8 +31,8 @@ export async function getTodayProgress(): Promise<{
   };
 }
 
-/** 僅在「今日任務」流程中呼叫：完成今日題組中的一題時計入進度 */
-export async function completeTodayQuestion(): Promise<{
+/** 每答一題時計入今日任務進度（Drill / Speed Quiz / 今日題組皆可呼叫） */
+export async function incrementTodayProgress(): Promise<{
   completed: number;
   total: number;
   justCompleted?: boolean;
@@ -61,6 +61,9 @@ export async function completeTodayQuestion(): Promise<{
     ...(justStreak7 && { justStreak7: true }),
   };
 }
+
+// Backward-compatible alias
+export const completeTodayQuestion = incrementTodayProgress;
 
 export async function getStreak(): Promise<number> {
   if (typeof window === "undefined") return 0;

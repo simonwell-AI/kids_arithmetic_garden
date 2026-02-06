@@ -68,6 +68,12 @@ export async function addTool(toolId: string, count: number): Promise<void> {
   await (await getDB()).put(STORE_INVENTORY, inv);
 }
 
+export async function hasTool(toolId: string): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  const inv = normalizeInv(await getInventory());
+  return (inv.tools?.[toolId] ?? 0) > 0;
+}
+
 export async function addWateringCan(wateringCanId: string, count: number): Promise<void> {
   if (typeof window === "undefined") return;
   const inv = normalizeInv(await getInventory());

@@ -11,10 +11,9 @@ function loadStored(): { isPlaying: boolean; track: TrackIndex } {
   if (typeof window === "undefined")
     return { isPlaying: true, track: 0 };
   const playing = localStorage.getItem(STORAGE_PLAYING);
-  const track = localStorage.getItem(STORAGE_TRACK);
   return {
     isPlaying: playing === null ? true : playing === "true",
-    track: track === "2" ? 1 : 0,
+    track: 0,
   };
 }
 

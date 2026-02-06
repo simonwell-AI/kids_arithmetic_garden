@@ -10,6 +10,7 @@ export interface DrillSettingsState {
   count: number | null;
   difficulty: Difficulty;
   adaptive: boolean;
+  speech: boolean;
 }
 
 const DEFAULT_SETTINGS: DrillSettingsState = {
@@ -19,6 +20,7 @@ const DEFAULT_SETTINGS: DrillSettingsState = {
   count: 10,
   difficulty: "normal",
   adaptive: false,
+  speech: false,
 };
 
 export interface DrillSettingsProps {
@@ -32,6 +34,7 @@ export function DrillSettings({ initial, onSubmit }: DrillSettingsProps) {
   const [count, setCount] = useState<number | null>(initial?.count ?? DEFAULT_SETTINGS.count);
   const [difficulty, setDifficulty] = useState<Difficulty>(initial?.difficulty ?? DEFAULT_SETTINGS.difficulty);
   const [adaptive, setAdaptive] = useState(initial?.adaptive ?? DEFAULT_SETTINGS.adaptive);
+  const [speech, setSpeech] = useState(initial?.speech ?? DEFAULT_SETTINGS.speech);
 
   const handleSubmit = () => {
     onSubmit({
@@ -41,6 +44,7 @@ export function DrillSettings({ initial, onSubmit }: DrillSettingsProps) {
       count,
       difficulty,
       adaptive,
+      speech,
     });
   };
 
@@ -71,7 +75,7 @@ export function DrillSettings({ initial, onSubmit }: DrillSettingsProps) {
       <div>
         <p className="mb-2 text-sm font-semibold text-gray-700">範圍</p>
         <div className="flex flex-wrap gap-2">
-          {[10, 20, 100].map((r) => (
+          {[10, 20, 50, 100, 200, 500].map((r) => (
             <button
               key={r}
               type="button"
@@ -133,6 +137,15 @@ export function DrillSettings({ initial, onSubmit }: DrillSettingsProps) {
           className="h-5 w-5 rounded border-gray-300"
         />
         <span className="text-sm font-semibold text-gray-700">自適應（依錯題加強）</span>
+      </label>
+      <label className="flex cursor-pointer items-center gap-3">
+        <input
+          type="checkbox"
+          checked={speech}
+          onChange={(e) => setSpeech(e.target.checked)}
+          className="h-5 w-5 rounded border-gray-300"
+        />
+        <span className="text-sm font-semibold text-gray-700">語音朗讀題目</span>
       </label>
       <button
         type="button"

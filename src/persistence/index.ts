@@ -2,6 +2,7 @@ export { exportToJson, importFromJson, downloadExport } from "./export-import";
 export * from "./sessions";
 export * from "./skills";
 export * from "./dailyProgress";
+export * from "./dailyReward";
 export * from "./wallet";
 export * from "./inventory";
 export * from "./garden";

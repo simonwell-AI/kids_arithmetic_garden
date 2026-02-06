@@ -4,9 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { QuestionCard } from "@/src/components/QuestionCard";
 import { NumericKeypad } from "@/src/components/NumericKeypad";
 import { FeedbackToast } from "@/src/components/FeedbackToast";
-import { generateQuestions } from "@/src/generator";
 import type { Question } from "@/src/generator";
 import { playFeedbackSound } from "@/src/lib/sound";
+import { advanceDailyProgressAndClaimReward } from "@/src/persistence/dailyReward";
 
 const DURATION_MS = 60 * 1000;
 const TOTAL_QUESTIONS = 81;
@@ -38,6 +38,7 @@ export function SpeedQuiz() {
   const [lastCorrect, setLastCorrect] = useState(false);
   const [lastTimeMs, setLastTimeMs] = useState(0);
   const [startedAt, setStartedAt] = useState(0);
+  const [rewardMessage, setRewardMessage] = useState<string | null>(null);
 
   const question = questions[index];
 
@@ -65,7 +66,7 @@ export function SpeedQuiz() {
     setStartedAt(Date.now());
   }, []);
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     if (!question || phase !== "playing") return;
     const num = parseInt(value, 10);
     const correct = num === question.answer;
@@ -76,6 +77,16 @@ export function SpeedQuiz() {
     setShowFeedback(true);
     if (correct) {
       setCorrectCount((c) => c + 1);
+    }
+    const rewardResult = await advanceDailyProgressAndClaimReward();
+    const reward = rewardResult.reward;
+    if (reward?.claimed && reward.rewardAmount > 0) {
+      const msg =
+        reward.streakBonus > 0
+          ? `今日任務完成！獲得 ${reward.rewardAmount} 代幣！（含連續 7 天獎勵 +${reward.streakBonus}）`
+          : `今日任務完成！獲得 ${reward.rewardAmount} 代幣！`;
+      setRewardMessage(msg);
+      setTimeout(() => setRewardMessage(null), 4000);
     }
   }, [question, value, phase, startedAt]);
 
@@ -160,6 +171,14 @@ export function SpeedQuiz() {
           responseTimeMs={lastTimeMs}
           onDismiss={handleDismissFeedback}
         />
+      )}
+      {rewardMessage && (
+        <div
+          className="fixed left-1/2 top-4 z-20 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 rounded-xl bg-amber-400 px-4 py-3 text-center font-bold text-amber-950 shadow-lg"
+          role="status"
+        >
+          {rewardMessage}
+        </div>
       )}
     </div>
   );

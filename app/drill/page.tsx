@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { DrillSettings, type DrillSettingsState } from "@/src/components/DrillSettings";
 import { QuestionCard } from "@/src/components/QuestionCard";
 import { NumericKeypad } from "@/src/components/NumericKeypad";
@@ -19,7 +19,9 @@ import {
   createSessionId,
   createAttemptId,
 } from "@/src/persistence";
+import { advanceDailyProgressAndClaimReward } from "@/src/persistence/dailyReward";
 import { playFeedbackSound } from "@/src/lib/sound";
+import { speakText, stopSpeaking } from "@/src/lib/speech";
 import type { AttemptRecord } from "@/src/persistence/db";
 
 type Phase = "settings" | "questions" | "end";
@@ -39,8 +41,32 @@ export default function DrillPage() {
   const [totalTimeMs, setTotalTimeMs] = useState(0);
   const [attempts, setAttempts] = useState<AttemptRecord[]>([]);
   const [weightsMap, setWeightsMap] = useState<Record<string, number>>({});
+  const [rewardMessage, setRewardMessage] = useState<string | null>(null);
 
   const question = questions[index];
+  const speakEnabled = settings?.speech ?? false;
+
+  const questionSpeechText = useMemo(() => {
+    if (!question) return "";
+    switch (question.op) {
+      case "add":
+        return `${question.a} 加 ${question.b} 等於多少`;
+      case "sub":
+        return `${question.a} 減 ${question.b} 等於多少`;
+      case "mul":
+        return `${question.a} 乘以 ${question.b} 等於多少`;
+      case "div":
+        return `${question.a} 除以 ${question.b} 等於多少`;
+      default:
+        return `${question.a} 加 ${question.b} 等於多少`;
+    }
+  }, [question]);
+
+  useEffect(() => {
+    if (phase !== "questions" || !question || !speakEnabled) return;
+    stopSpeaking();
+    speakText(questionSpeechText);
+  }, [phase, question, speakEnabled, questionSpeechText]);
 
   const handleStartDrill = useCallback(async (s: DrillSettingsState) => {
     setSettings(s);
@@ -132,6 +158,17 @@ export default function DrillPage() {
       },
     ]);
 
+    const rewardResult = await advanceDailyProgressAndClaimReward();
+    const reward = rewardResult.reward;
+    if (reward?.claimed && reward.rewardAmount > 0) {
+      const msg =
+        reward.streakBonus > 0
+          ? `今日任務完成！獲得 ${reward.rewardAmount} 代幣！（含連續 7 天獎勵 +${reward.streakBonus}）`
+          : `今日任務完成！獲得 ${reward.rewardAmount} 代幣！`;
+      setRewardMessage(msg);
+      setTimeout(() => setRewardMessage(null), 4000);
+    }
+
     if (correct) {
       setCorrectCount((c) => c + 1);
       setTotalTimeMs((t) => t + elapsed);
@@ -214,6 +251,14 @@ export default function DrillPage() {
                 responseTimeMs={lastTimeMs}
                 onDismiss={handleDismissFeedback}
               />
+            )}
+            {rewardMessage && (
+              <div
+                className="fixed left-1/2 top-4 z-20 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 rounded-xl bg-amber-400 px-4 py-3 text-center font-bold text-amber-950 shadow-lg"
+                role="status"
+              >
+                {rewardMessage}
+              </div>
             )}
           </>
         )}

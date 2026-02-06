@@ -72,6 +72,12 @@ export interface GardenRecord {
   lastWateredAt?: number;
   lastFertilizedAt?: number;
   fertilizerType?: "basic" | "premium";
+  lastForkedAt?: number;
+  soilBoostUntil?: number;
+  lastMistedAt?: number;
+  mistBoostUntil?: number;
+  soilQualityBoost?: number;
+  trowelUsed?: boolean;
 }
 
 let dbPromise: ReturnType<typeof openDB> | null = null;

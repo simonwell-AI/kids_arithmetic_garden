@@ -178,7 +178,7 @@ export function generateTodayQuestions(dateKey: string, count: number): Question
     return generateQuestions({
       operation: 'mixed',
       rangeMin: 0,
-      rangeMax: 20,
+      rangeMax: 50,
       count,
       difficulty: 'normal',
     });

@@ -1,10 +1,29 @@
 import { getDB, STORE_GARDEN, GARDEN_KEY, type GardenRecord } from "./db";
-import { useSeed, useWater, useFertilizerBasic, useFertilizerPremium } from "./inventory";
+import {
+  useSeed,
+  useWater,
+  useFertilizerBasic,
+  useFertilizerPremium,
+  hasTool,
+} from "./inventory";
+import { getHasWeeds, setLastGardenVisit } from "./gardenVisit";
 
 const MAX_GROWTH_STAGE = 4; // 0..4, 4 = 開花
 const GROWTH_PER_DAY_WATER = 0.2;
 const GROWTH_PER_DAY_FERTILIZER_BASIC = 0.3;
 const GROWTH_PER_DAY_FERTILIZER_PREMIUM = 0.5;
+const WEED_PENALTY_MULTIPLIER = 0.7;
+const WEED_PENALTY_MIST_MULTIPLIER = 0.85;
+const FORK_BOOST_MULTIPLIER = 1.1;
+const MIST_BOOST_MULTIPLIER = 1.15;
+const SOIL_QUALITY_BOOST = 0.1;
+const FORK_COOLDOWN_MS = 0;
+const MIST_COOLDOWN_MS = 0;
+const FORK_GROWTH_BONUS = 0.12;
+const MIST_GROWTH_BONUS = 0.05;
+const TROWEL_GROWTH_BONUS = 0.5;
+const FERTILIZER_BOTTLE_BONUS_BASIC = 0.15;
+const FERTILIZER_BOTTLE_BONUS_PREMIUM = 0.25;
 
 async function getGardenRecord(): Promise<GardenRecord | null> {
   const db = await getDB();
@@ -16,6 +35,21 @@ function getGrowthRate(record: GardenRecord): number {
   let rate = GROWTH_PER_DAY_WATER;
   if (record.fertilizerType === "basic") rate += GROWTH_PER_DAY_FERTILIZER_BASIC;
   else if (record.fertilizerType === "premium") rate += GROWTH_PER_DAY_FERTILIZER_PREMIUM;
+  if (record.soilQualityBoost != null) {
+    rate *= 1 + record.soilQualityBoost;
+  }
+  const now = Date.now();
+  if (record.soilBoostUntil != null && now < record.soilBoostUntil) {
+    rate *= FORK_BOOST_MULTIPLIER;
+  }
+  if (record.mistBoostUntil != null && now < record.mistBoostUntil) {
+    rate *= MIST_BOOST_MULTIPLIER;
+  }
+  if (getHasWeeds()) {
+    rate *= record.mistBoostUntil != null && now < record.mistBoostUntil
+      ? WEED_PENALTY_MIST_MULTIPLIER
+      : WEED_PENALTY_MULTIPLIER;
+  }
   return rate;
 }
 
@@ -23,7 +57,8 @@ function computeGrowthValue(record: GardenRecord & { growthStage?: number }): nu
   const dayMs = 24 * 60 * 60 * 1000;
   const lastCare = Math.max(
     record.lastWateredAt ?? 0,
-    record.lastFertilizedAt ?? record.plantedAt
+    record.lastFertilizedAt ?? record.plantedAt,
+    record.lastMistedAt ?? 0
   );
   const daysSinceCare = (Date.now() - lastCare) / dayMs;
   const rate = getGrowthRate(record);
@@ -49,6 +84,12 @@ export async function getGarden(): Promise<{
   lastWateredAt?: number;
   lastFertilizedAt?: number;
   fertilizerType?: "basic" | "premium";
+  lastForkedAt?: number;
+  soilBoostUntil?: number;
+  lastMistedAt?: number;
+  mistBoostUntil?: number;
+  soilQualityBoost?: number;
+  trowelUsed?: boolean;
 } | null> {
   if (typeof window === "undefined") return null;
   const record = await getGardenRecord();
@@ -63,6 +104,12 @@ export async function getGarden(): Promise<{
     lastWateredAt: record.lastWateredAt,
     lastFertilizedAt: record.lastFertilizedAt,
     fertilizerType: record.fertilizerType,
+    lastForkedAt: record.lastForkedAt,
+    soilBoostUntil: record.soilBoostUntil,
+    lastMistedAt: record.lastMistedAt,
+    mistBoostUntil: record.mistBoostUntil,
+    soilQualityBoost: record.soilQualityBoost,
+    trowelUsed: record.trowelUsed,
   };
 }
 
@@ -110,6 +157,10 @@ export async function fertilize(type: "basic" | "premium"): Promise<{ success: b
   record.growthValue = currentValue;
   record.lastFertilizedAt = Date.now();
   record.fertilizerType = type;
+  const hasBottle = await hasTool("fertilizer_bottle");
+  if (hasBottle) {
+    record.growthValue += type === "basic" ? FERTILIZER_BOTTLE_BONUS_BASIC : FERTILIZER_BOTTLE_BONUS_PREMIUM;
+  }
   await saveGarden(record);
   return { success: true };
 }
@@ -119,5 +170,86 @@ export async function harvest(): Promise<{ success: boolean; message?: string }>
   if (typeof window === "undefined") return { success: false, message: "僅支援瀏覽器" };
   const db = await getDB();
   await db.delete(STORE_GARDEN, GARDEN_KEY);
+  return { success: true };
+}
+
+/** 修剪雜草：需要園藝剪刀，清除雜草並給少量成長 */
+export async function trimWeeds(): Promise<{ success: boolean; message?: string }> {
+  if (typeof window === "undefined") return { success: false, message: "僅支援瀏覽器" };
+  if (!getHasWeeds()) return { success: false, message: "目前沒有雜草" };
+  const hasScissors = await hasTool("garden_scissors");
+  if (!hasScissors) return { success: false, message: "需要園藝剪刀" };
+  const record = await getGardenRecord();
+  if (record) {
+    record.growthValue = computeGrowthValue(record) + 0.1;
+    await saveGarden(record);
+  }
+  setLastGardenVisit();
+  return { success: true };
+}
+
+/** 鬆土：需要園藝叉，每日一次，小幅加速成長 */
+export async function loosenSoil(): Promise<{ success: boolean; message?: string }> {
+  if (typeof window === "undefined") return { success: false, message: "僅支援瀏覽器" };
+  const record = await getGardenRecord();
+  if (!record) return { success: false, message: "尚未種植" };
+  const hasFork = await hasTool("garden_fork");
+  if (!hasFork) return { success: false, message: "需要園藝叉" };
+  const now = Date.now();
+  if (record.lastForkedAt && now - record.lastForkedAt < FORK_COOLDOWN_MS) {
+    return { success: false, message: "今天已經鬆土過了" };
+  }
+  record.growthValue = computeGrowthValue(record) + FORK_GROWTH_BONUS;
+  record.lastForkedAt = now;
+  record.soilBoostUntil = now + FORK_COOLDOWN_MS;
+  await saveGarden(record);
+  return { success: true };
+}
+
+/** 噴霧保濕：需要噴霧器，提升短時間成長效率 */
+export async function mistPlant(): Promise<{ success: boolean; message?: string }> {
+  if (typeof window === "undefined") return { success: false, message: "僅支援瀏覽器" };
+  const record = await getGardenRecord();
+  if (!record) return { success: false, message: "尚未種植" };
+  const hasMister = await hasTool("plant_mister");
+  if (!hasMister) return { success: false, message: "需要噴霧器" };
+  const now = Date.now();
+  if (record.lastMistedAt && now - record.lastMistedAt < MIST_COOLDOWN_MS) {
+    return { success: false, message: "剛噴過，稍後再來" };
+  }
+  record.growthValue = computeGrowthValue(record) + MIST_GROWTH_BONUS;
+  record.lastMistedAt = now;
+  record.mistBoostUntil = now + 12 * 60 * 60 * 1000;
+  await saveGarden(record);
+  return { success: true };
+}
+
+/** 換盆整理：需要園藝鏟，僅一次性大幅成長 */
+export async function repotPlant(): Promise<{ success: boolean; message?: string }> {
+  if (typeof window === "undefined") return { success: false, message: "僅支援瀏覽器" };
+  const record = await getGardenRecord();
+  if (!record) return { success: false, message: "尚未種植" };
+  const hasTrowel = await hasTool("garden_trowel");
+  if (!hasTrowel) return { success: false, message: "需要園藝鏟" };
+  const currentValue = computeGrowthValue(record);
+  if (growthValueToStage(currentValue) < 1) return { success: false, message: "幼苗太小，稍後再整理" };
+  if (record.trowelUsed) return { success: false, message: "這株已整理過了" };
+  record.growthValue = currentValue + TROWEL_GROWTH_BONUS;
+  record.trowelUsed = true;
+  await saveGarden(record);
+  return { success: true };
+}
+
+/** 添加營養土：需要盆栽土，永久小幅加成 */
+export async function applyPottingSoil(): Promise<{ success: boolean; message?: string }> {
+  if (typeof window === "undefined") return { success: false, message: "僅支援瀏覽器" };
+  const record = await getGardenRecord();
+  if (!record) return { success: false, message: "尚未種植" };
+  const hasSoil = await hasTool("potting_soil");
+  if (!hasSoil) return { success: false, message: "需要盆栽土" };
+  if (record.soilQualityBoost != null) return { success: false, message: "已經添加過營養土" };
+  record.growthValue = computeGrowthValue(record);
+  record.soilQualityBoost = SOIL_QUALITY_BOOST;
+  await saveGarden(record);
   return { success: true };
 }
