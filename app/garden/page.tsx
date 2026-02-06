@@ -19,7 +19,7 @@ import { getInventoryState } from "@/src/persistence/inventory";
 import { getHasWeeds, setLastGardenVisit } from "@/src/persistence/gardenVisit";
 import { getSeedGrowthImagePath, SEED_NAMES } from "@/src/garden/assets";
 import { SHOP_CATALOG } from "@/src/shop/catalog";
-import { playWaterSound, playSpraySound, playSoilSound, playSparkleSound, playScissorSound } from "@/src/lib/sound";
+import { playWaterSound, playSpraySound, playSoilSound, playSparkleSound, playScissorSound, getScissorSoundDurationMs, getSpraySoundDurationMs } from "@/src/lib/sound";
 
 type GardenAnimating = "water" | "fertilize" | "weed" | "fork" | "mist" | "soil" | null;
 
@@ -30,9 +30,12 @@ const WATER_ANIMATION_DURATION_MS = 2800;
 const FERTILIZE_ANIMATION_DURATION_MS = 3200;
 /** 鬆土動畫：短時間震動 + 土粒 */
 const FORK_ANIMATION_DURATION_MS = 1200;
-/** 噴霧動畫：霧氣飄散 */
-const MIST_ANIMATION_DURATION_MS = 1400;
+/** 噴霧動畫：噴霧瓶搖擺直到音效結束 */
+const MIST_ANIMATION_MIN_MS = 1000;
 const SOIL_ANIMATION_DURATION_MS = 1400;
+/** 剪雜草動畫：依音效長度設定動畫時長，音效延遲以對齊「剪」的瞬間（約 30%） */
+const WEED_ANIMATION_MIN_MS = 933;
+const WEED_SNIP_SOUND_DELAY_MS = 280;
 const FORK_COOLDOWN_MS = 0;
 const MIST_COOLDOWN_MS = 0;
 /** 商店消耗品圖示（與商店顯示一致） */
@@ -48,14 +51,18 @@ const POTTING_SOIL_IMAGE = "/garden-assets/gargen_tools/Potting Soil.png";
 
 const GRASS_BASE = "/garden-assets/grass";
 const GRASS_IMAGES = [1, 2, 3, 4, 5, 6, 7, 8].map((n) => `${GRASS_BASE}/grass_${n}.png`);
-/** 野草疊層：集中在盆土區域 */
+/** 野草疊層：固定在同一水平面一行，沿盆底地面排列，較密集 */
+const WEED_GROUND_BOTTOM = "6%";
 const WEED_POSITIONS: { top?: string; bottom?: string; left?: string; right?: string; size: number }[] = [
-  { bottom: "12%", left: "8%", size: 26 },
-  { bottom: "10%", right: "8%", size: 28 },
-  { bottom: "22%", left: "20%", size: 22 },
-  { bottom: "24%", right: "18%", size: 24 },
-  { bottom: "30%", left: "40%", size: 22 },
-  { bottom: "28%", right: "42%", size: 22 },
+  { bottom: WEED_GROUND_BOTTOM, left: "2%", size: 22 },
+  { bottom: WEED_GROUND_BOTTOM, left: "12%", size: 24 },
+  { bottom: WEED_GROUND_BOTTOM, left: "22%", size: 26 },
+  { bottom: WEED_GROUND_BOTTOM, left: "32%", size: 22 },
+  { bottom: WEED_GROUND_BOTTOM, left: "42%", size: 26 },
+  { bottom: WEED_GROUND_BOTTOM, left: "52%", size: 24 },
+  { bottom: WEED_GROUND_BOTTOM, left: "62%", size: 22 },
+  { bottom: WEED_GROUND_BOTTOM, left: "72%", size: 26 },
+  { bottom: WEED_GROUND_BOTTOM, left: "82%", size: 24 },
 ];
 
 /** 從庫存取得第一個擁有的水壺圖片路徑（用於澆水動畫）；若無則用目錄中第一個水壺 */
@@ -81,6 +88,10 @@ export default function GardenPage() {
   /** 施肥動畫時區分一般／高級，用於粒子顏色與樣式 */
   const [fertilizeType, setFertilizeType] = useState<"basic" | "premium" | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  /** 剪雜草動畫時長（依音效長度動態設定，預設 950ms） */
+  const [weedAnimationDurationMs, setWeedAnimationDurationMs] = useState(950);
+  /** 噴霧動畫時長（依音效長度動態設定，噴霧瓶搖擺至音效結束） */
+  const [mistAnimationDurationMs, setMistAnimationDurationMs] = useState(1400);
 
   const wateringCanImagePath = useMemo(
     () => getWateringCanImagePath(inventory?.wateringCans),
@@ -191,10 +202,13 @@ export default function GardenPage() {
     const result = await trimWeeds();
     if (result.success) {
       setHasWeeds(false);
+      const soundMs = await getScissorSoundDurationMs();
+      const totalMs = Math.max(WEED_ANIMATION_MIN_MS, WEED_SNIP_SOUND_DELAY_MS + soundMs);
+      setWeedAnimationDurationMs(totalMs);
       setAnimating("weed");
-      await playScissorSound();
       showMessage("雜草修剪完成～ 成長 +0.1");
-      setTimeout(() => setAnimating(null), 700);
+      setTimeout(() => playScissorSound(), WEED_SNIP_SOUND_DELAY_MS);
+      setTimeout(() => setAnimating(null), totalMs);
     } else {
       showMessage(result.message ?? "除草失敗");
     }
@@ -218,13 +232,16 @@ export default function GardenPage() {
   const handleMister = useCallback(async () => {
     const result = await mistPlant();
     if (result.success) {
+      const soundMs = await getSpraySoundDurationMs();
+      const totalMs = Math.max(MIST_ANIMATION_MIN_MS, soundMs);
+      setMistAnimationDurationMs(totalMs);
       setAnimating("mist");
-      const soundMs = await playSpraySound();
       showMessage("噴霧保濕完成～ 成長 +0.05");
+      playSpraySound();
       setTimeout(() => {
         setAnimating(null);
         load();
-      }, Math.max(MIST_ANIMATION_DURATION_MS, soundMs));
+      }, totalMs);
     } else {
       showMessage(result.message ?? "噴霧失敗");
     }
@@ -352,9 +369,19 @@ export default function GardenPage() {
                 className="garden-plant-sway object-contain"
                 unoptimized
               />
+              {/* 土壤層：始終存在，高度不超過雜草底，僅一薄條地面 */}
+              <div
+                className="garden-weed-soil pointer-events-none absolute left-0 right-0 bottom-0 h-[6%] rounded-t-[30%]"
+                style={{
+                  background: "linear-gradient(180deg, rgba(139, 90, 43, 0.85) 0%, rgba(101, 67, 33, 0.9) 50%, rgba(80, 52, 28, 0.95) 100%)",
+                  boxShadow: "inset 0 2px 4px rgba(0,0,0,0.15)",
+                }}
+                aria-hidden
+              />
               {hasWeeds && (
                 <div
                   className={`pointer-events-none absolute bottom-0 left-0 right-0 h-[45%] overflow-hidden ${animating === "weed" ? "garden-animate-weed garden-weed-layer" : ""}`}
+                  style={animating === "weed" ? ({ "--weed-duration": `${weedAnimationDurationMs}ms` } as React.CSSProperties) : undefined}
                   aria-hidden
                 >
                   {WEED_POSITIONS.map((pos, i) => (
@@ -463,7 +490,10 @@ export default function GardenPage() {
                 </div>
               )}
               {animating === "mist" && (
-                <div className="garden-animate-mist pointer-events-none absolute inset-0 z-10 overflow-visible">
+                <div
+                  className="garden-animate-mist pointer-events-none absolute inset-0 z-10 overflow-visible"
+                  style={{ ["--mist-duration" as string]: `${mistAnimationDurationMs}ms` }}
+                >
                   <div className="garden-tool-mist-wrap">
                     <Image
                       src={PLANT_MISTER_IMAGE}
@@ -611,6 +641,7 @@ export default function GardenPage() {
                       width={86}
                       height={86}
                       className="garden-weed-scissors-snap object-contain"
+                      style={{ animationDuration: `${weedAnimationDurationMs}ms` }}
                       unoptimized
                     />
                   </div>
@@ -622,6 +653,7 @@ export default function GardenPage() {
                         top: `${28 + i * 16}%`,
                         left: `${40 + (i % 2) * 12}%`,
                         animationDelay: `${0.1 + i * 0.12}s`,
+                        animationDuration: `${weedAnimationDurationMs}ms`,
                       }}
                     />
                   ))}
@@ -635,9 +667,13 @@ export default function GardenPage() {
                     type="button"
                     onClick={handleWeed}
                     disabled={animating !== null || (inventory?.tools?.garden_scissors ?? 0) < 1}
-                    className="min-h-[48px] rounded-2xl bg-green-600 px-6 font-bold text-white shadow-md disabled:opacity-50 hover:bg-green-700 active:scale-[0.98]"
+                    title={(inventory?.tools?.garden_scissors ?? 0) < 1 ? "請先至商店購買園藝剪刀" : undefined}
+                    className="min-h-[48px] rounded-2xl bg-green-600 px-6 font-bold text-white shadow-md disabled:opacity-50 hover:bg-green-700 active:scale-[0.98] disabled:cursor-not-allowed"
                   >
                     ✂️ 修剪雜草
+                    {(inventory?.tools?.garden_scissors ?? 0) < 1 && (
+                      <span className="ml-1 text-xs font-normal opacity-90">（需園藝剪刀）</span>
+                    )}
                   </button>
                 )}
                 <button

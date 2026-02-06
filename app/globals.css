@@ -277,13 +277,14 @@ body {
   75% { transform: translateX(4px) rotate(3deg); opacity: 0.5; }
 }
 
+/* 雜草慢慢減少：隨動畫時長漸淡、縮小，直到音效結束 */
 @keyframes garden-weed-fade {
   0% { opacity: 1; transform: scale(1); }
-  100% { opacity: 0; transform: scale(0.8); }
+  100% { opacity: 0; transform: scale(0.4); }
 }
 
 .garden-animate-weed .garden-weed-layer {
-  animation: garden-weed-fade 0.6s ease-out forwards;
+  animation: garden-weed-fade var(--weed-duration, 0.9s) ease-out forwards;
 }
 
 @keyframes garden-weed-snip {
@@ -296,10 +297,16 @@ body {
   animation: garden-weed-snip 0.7s ease-out forwards;
 }
 
+/* 剪刀多一點搖晃，配合修剪節奏 */
 @keyframes garden-weed-scissors-snap {
   0% { transform: translate(0, 0) rotate(12deg); opacity: 0.95; }
-  30% { transform: translate(-6%, 4%) rotate(-18deg); opacity: 1; }
-  60% { transform: translate(2%, 10%) rotate(10deg); opacity: 1; }
+  12% { transform: translate(-4%, 2%) rotate(-8deg); opacity: 1; }
+  25% { transform: translate(3%, 4%) rotate(5deg); opacity: 1; }
+  38% { transform: translate(-5%, 6%) rotate(-12deg); opacity: 1; }
+  50% { transform: translate(2%, 8%) rotate(8deg); opacity: 1; }
+  62% { transform: translate(-3%, 9%) rotate(-6deg); opacity: 1; }
+  75% { transform: translate(4%, 10%) rotate(10deg); opacity: 1; }
+  88% { transform: translate(-2%, 11%) rotate(-4deg); opacity: 1; }
   100% { transform: translate(0, 12%) rotate(6deg); opacity: 0.95; }
 }
 
@@ -399,11 +406,17 @@ body {
   box-shadow: 0 0 8px rgba(186, 230, 253, 0.8);
 }
 
+/* 噴霧瓶持續搖擺至音效結束（時長由 inline style 設定） */
 @keyframes garden-mist-tool-swing {
-  0% { transform: translate(0, 0) rotate(10deg); opacity: 0.95; }
-  30% { transform: translate(-6%, 4%) rotate(-16deg); opacity: 1; }
-  60% { transform: translate(4%, 8%) rotate(12deg); opacity: 1; }
-  100% { transform: translate(0, 12%) rotate(6deg); opacity: 0.95; }
+  0% { transform: translate(0, 0) rotate(8deg); opacity: 0.95; }
+  12.5% { transform: translate(-4%, 2%) rotate(-14deg); opacity: 1; }
+  25% { transform: translate(2%, 4%) rotate(12deg); opacity: 1; }
+  37.5% { transform: translate(-5%, 3%) rotate(-12deg); opacity: 1; }
+  50% { transform: translate(3%, 6%) rotate(10deg); opacity: 1; }
+  62.5% { transform: translate(-4%, 5%) rotate(-10deg); opacity: 1; }
+  75% { transform: translate(2%, 7%) rotate(8deg); opacity: 1; }
+  87.5% { transform: translate(-3%, 6%) rotate(-8deg); opacity: 1; }
+  100% { transform: translate(0, 8%) rotate(4deg); opacity: 0.95; }
 }
 
 @keyframes garden-mist-drop {
@@ -424,7 +437,7 @@ body {
 
 .garden-tool-mist-swing {
   transform-origin: 20% 20%;
-  animation: garden-mist-tool-swing 1.4s ease-in-out forwards;
+  animation: garden-mist-tool-swing var(--mist-duration, 1.4s) ease-in-out forwards;
 }
 
 .garden-mist-drop {

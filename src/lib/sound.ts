@@ -63,6 +63,26 @@ export async function playWaterSound(): Promise<number> {
   });
 }
 
+/** 取得噴霧音效長度（ms），供噴霧動畫對齊時長 */
+export function getSpraySoundDurationMs(): Promise<number> {
+  if (typeof window === "undefined") return Promise.resolve(0);
+  const audio = sprayAudio ?? new Audio(SPRAY_PATH);
+  if (sprayAudio == null) sprayAudio = audio;
+  if (Number.isFinite(audio.duration) && audio.duration > 0) return Promise.resolve(audio.duration * 1000);
+  return new Promise((resolve) => {
+    const done = (ms: number) => {
+      audio.removeEventListener("loadedmetadata", onMeta);
+      resolve(ms);
+    };
+    const onMeta = () => {
+      done(Number.isFinite(audio.duration) ? audio.duration * 1000 : 0);
+    };
+    audio.addEventListener("loadedmetadata", onMeta, { once: true });
+    audio.load();
+    setTimeout(() => done(0), 500);
+  });
+}
+
 export async function playSpraySound(): Promise<number> {
   if (typeof window === "undefined") return 0;
   const audio = sprayAudio ?? new Audio(SPRAY_PATH);
@@ -95,7 +115,7 @@ export async function playSoilSound(): Promise<number> {
   if (typeof window === "undefined") return 0;
   const audio = soilAudio ?? new Audio(SOIL_SCRAPE_PATH);
   soilAudio = audio;
-  audio.volume = 0.65;
+  audio.volume = 0.45;
   audio.currentTime = 0;
   audio.play().catch(() => {});
   if (Number.isFinite(audio.duration) && audio.duration > 0) return audio.duration * 1000;
@@ -163,6 +183,26 @@ export async function playPurchaseSound(): Promise<number> {
     };
     audio.addEventListener("loadedmetadata", onMeta, { once: true });
     setTimeout(() => done(0), 300);
+  });
+}
+
+/** 取得剪刀音效長度（ms），供剪雜草動畫對齊時長 */
+export function getScissorSoundDurationMs(): Promise<number> {
+  if (typeof window === "undefined") return Promise.resolve(0);
+  const audio = scissorAudio ?? new Audio(SCISSOR_SNIP_PATH);
+  if (scissorAudio == null) scissorAudio = audio;
+  if (Number.isFinite(audio.duration) && audio.duration > 0) return Promise.resolve(audio.duration * 1000);
+  return new Promise((resolve) => {
+    const done = (ms: number) => {
+      audio.removeEventListener("loadedmetadata", onMeta);
+      resolve(ms);
+    };
+    const onMeta = () => {
+      done(Number.isFinite(audio.duration) ? audio.duration * 1000 : 0);
+    };
+    audio.addEventListener("loadedmetadata", onMeta, { once: true });
+    audio.load();
+    setTimeout(() => done(0), 500);
   });
 }
 
