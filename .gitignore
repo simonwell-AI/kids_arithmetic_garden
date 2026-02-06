@@ -39,6 +39,8 @@ yarn-error.log*
 # 部署到 kid_arithmetic_garden 時不包含（僅本專案使用）
 .cursor/
 /scripts/
+/cloudflare/
+/ngrok/
 
 # Cloudflare Tunnel 實際設定（含 tunnel ID），範例為 config.example.yml
 /cloudflare/config.yml
