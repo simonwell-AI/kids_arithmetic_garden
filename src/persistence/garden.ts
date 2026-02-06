@@ -17,8 +17,12 @@ const WEED_PENALTY_MIST_MULTIPLIER = 0.85;
 const FORK_BOOST_MULTIPLIER = 1.1;
 const MIST_BOOST_MULTIPLIER = 1.15;
 const SOIL_QUALITY_BOOST = 0.1;
-const FORK_COOLDOWN_MS = 0;
-const MIST_COOLDOWN_MS = 0;
+/** 鬆土冷卻時間（5 分鐘） */
+const FORK_COOLDOWN_MS = 5 * 60 * 1000;
+/** 噴霧冷卻時間（5 分鐘） */
+const MIST_COOLDOWN_MS = 5 * 60 * 1000;
+/** 修剪雜草冷卻時間（3 小時） */
+const WEED_COOLDOWN_MS = 3 * 60 * 60 * 1000;
 const FORK_GROWTH_BONUS = 0.12;
 const MIST_GROWTH_BONUS = 0.05;
 const TROWEL_GROWTH_BONUS = 0.5;
@@ -90,6 +94,7 @@ export async function getGarden(): Promise<{
   mistBoostUntil?: number;
   soilQualityBoost?: number;
   trowelUsed?: boolean;
+  lastTrimmedAt?: number;
 } | null> {
   if (typeof window === "undefined") return null;
   const record = await getGardenRecord();
@@ -110,6 +115,7 @@ export async function getGarden(): Promise<{
     mistBoostUntil: record.mistBoostUntil,
     soilQualityBoost: record.soilQualityBoost,
     trowelUsed: record.trowelUsed,
+    lastTrimmedAt: record.lastTrimmedAt,
   };
 }
 
@@ -173,17 +179,21 @@ export async function harvest(): Promise<{ success: boolean; message?: string }>
   return { success: true };
 }
 
-/** 修剪雜草：需要園藝剪刀，清除雜草並給少量成長 */
+/** 修剪雜草：需要園藝剪刀，清除雜草並給少量成長；每 3 小時可剪一次 */
 export async function trimWeeds(): Promise<{ success: boolean; message?: string }> {
   if (typeof window === "undefined") return { success: false, message: "僅支援瀏覽器" };
   if (!getHasWeeds()) return { success: false, message: "目前沒有雜草" };
   const hasScissors = await hasTool("garden_scissors");
   if (!hasScissors) return { success: false, message: "需要園藝剪刀" };
   const record = await getGardenRecord();
-  if (record) {
-    record.growthValue = computeGrowthValue(record) + 0.1;
-    await saveGarden(record);
+  if (!record) return { success: false, message: "尚未種植" };
+  const now = Date.now();
+  if (record.lastTrimmedAt != null && now - record.lastTrimmedAt < WEED_COOLDOWN_MS) {
+    return { success: false, message: "需再等一段時間才能再修剪雜草" };
   }
+  record.growthValue = computeGrowthValue(record) + 0.1;
+  record.lastTrimmedAt = now;
+  await saveGarden(record);
   setLastGardenVisit();
   return { success: true };
 }

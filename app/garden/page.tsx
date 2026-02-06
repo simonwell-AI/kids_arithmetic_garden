@@ -19,7 +19,7 @@ import { getInventoryState } from "@/src/persistence/inventory";
 import { getHasWeeds, setLastGardenVisit } from "@/src/persistence/gardenVisit";
 import { getSeedGrowthImagePath, SEED_NAMES } from "@/src/garden/assets";
 import { SHOP_CATALOG } from "@/src/shop/catalog";
-import { playWaterSound, playSpraySound, playSoilSound, playSparkleSound, playScissorSound, getScissorSoundDurationMs, getSpraySoundDurationMs } from "@/src/lib/sound";
+import { unlockAudio, playWaterSound, playSpraySound, playSoilSound, playSparkleSound, playScissorSound, getScissorSoundDurationMs, getSpraySoundDurationMs, getSoilSoundDurationMs } from "@/src/lib/sound";
 
 type GardenAnimating = "water" | "fertilize" | "weed" | "fork" | "mist" | "soil" | null;
 
@@ -28,16 +28,20 @@ const ANIMATION_DURATION_MS = 1200;
 const WATER_ANIMATION_DURATION_MS = 2800;
 /** 肥料動畫：依購買的消耗品圖示呈現，每次至少 3 秒 */
 const FERTILIZE_ANIMATION_DURATION_MS = 3200;
-/** 鬆土動畫：短時間震動 + 土粒 */
-const FORK_ANIMATION_DURATION_MS = 1200;
+/** 鬆土動畫：園藝叉搖擺直到音效結束 */
+const FORK_ANIMATION_MIN_MS = 800;
 /** 噴霧動畫：噴霧瓶搖擺直到音效結束 */
 const MIST_ANIMATION_MIN_MS = 1000;
 const SOIL_ANIMATION_DURATION_MS = 1400;
 /** 剪雜草動畫：依音效長度設定動畫時長，音效延遲以對齊「剪」的瞬間（約 30%） */
 const WEED_ANIMATION_MIN_MS = 933;
 const WEED_SNIP_SOUND_DELAY_MS = 280;
-const FORK_COOLDOWN_MS = 0;
-const MIST_COOLDOWN_MS = 0;
+/** 鬆土冷卻時間（與 garden.ts 一致：5 分鐘） */
+const FORK_COOLDOWN_MS = 5 * 60 * 1000;
+/** 噴霧冷卻時間（與 garden.ts 一致：5 分鐘） */
+const MIST_COOLDOWN_MS = 5 * 60 * 1000;
+/** 修剪雜草冷卻時間（與 garden.ts 一致：3 小時） */
+const WEED_COOLDOWN_MS = 3 * 60 * 60 * 1000;
 /** 商店消耗品圖示（與商店顯示一致） */
 const FERTILIZER_BASIC_IMAGE = "/garden-assets/gargen_tools/normal fertilizer.png";
 const FERTILIZER_PREMIUM_IMAGE = "/garden-assets/gargen_tools/Advanced_fertilizer.png";
@@ -92,6 +96,8 @@ export default function GardenPage() {
   const [weedAnimationDurationMs, setWeedAnimationDurationMs] = useState(950);
   /** 噴霧動畫時長（依音效長度動態設定，噴霧瓶搖擺至音效結束） */
   const [mistAnimationDurationMs, setMistAnimationDurationMs] = useState(1400);
+  /** 鬆土動畫時長（依音效長度動態設定，園藝叉搖擺至音效結束） */
+  const [forkAnimationDurationMs, setForkAnimationDurationMs] = useState(1200);
 
   const wateringCanImagePath = useMemo(
     () => getWateringCanImagePath(inventory?.wateringCans),
@@ -120,8 +126,9 @@ export default function GardenPage() {
       const current = Date.now();
       const hasForkCooldown = garden.lastForkedAt != null && current - garden.lastForkedAt < FORK_COOLDOWN_MS;
       const hasMistCooldown = garden.lastMistedAt != null && current - garden.lastMistedAt < MIST_COOLDOWN_MS;
+      const hasWeedCooldown = garden.lastTrimmedAt != null && current - garden.lastTrimmedAt < WEED_COOLDOWN_MS;
       setNow(current);
-      if (!hasForkCooldown && !hasMistCooldown) {
+      if (!hasForkCooldown && !hasMistCooldown && !hasWeedCooldown) {
         clearInterval(t);
       }
     }, 1000);
@@ -163,6 +170,7 @@ export default function GardenPage() {
   );
 
   const handleWater = useCallback(async () => {
+    unlockAudio();
     const result = await water();
     if (result.success) {
       setAnimating("water");
@@ -179,6 +187,7 @@ export default function GardenPage() {
 
   const handleFertilize = useCallback(
     async (type: "basic" | "premium") => {
+      unlockAudio();
       const result = await fertilize(type);
       if (result.success) {
         setFertilizeType(type);
@@ -199,6 +208,7 @@ export default function GardenPage() {
   );
 
   const handleWeed = useCallback(async () => {
+    unlockAudio();
     const result = await trimWeeds();
     if (result.success) {
       setHasWeeds(false);
@@ -215,21 +225,26 @@ export default function GardenPage() {
   }, []);
 
   const handleFork = useCallback(async () => {
+    unlockAudio();
     const result = await loosenSoil();
     if (result.success) {
+      const soundMs = await getSoilSoundDurationMs();
+      const totalMs = Math.max(FORK_ANIMATION_MIN_MS, soundMs);
+      setForkAnimationDurationMs(totalMs);
       setAnimating("fork");
-      const soundMs = await playSoilSound();
       showMessage("鬆土完成，成長 +0.12");
+      playSoilSound();
       setTimeout(() => {
         setAnimating(null);
         load();
-      }, Math.max(FORK_ANIMATION_DURATION_MS, soundMs));
+      }, totalMs);
     } else {
       showMessage(result.message ?? "鬆土失敗");
     }
   }, [load]);
 
   const handleMister = useCallback(async () => {
+    unlockAudio();
     const result = await mistPlant();
     if (result.success) {
       const soundMs = await getSpraySoundDurationMs();
@@ -248,6 +263,7 @@ export default function GardenPage() {
   }, [load]);
 
   const handleTrowel = useCallback(async () => {
+    unlockAudio();
     const result = await repotPlant();
     if (result.success) {
       playSoilSound();
@@ -259,6 +275,7 @@ export default function GardenPage() {
   }, [load]);
 
   const handleSoil = useCallback(async () => {
+    unlockAudio();
     const result = await applyPottingSoil();
     if (result.success) {
       setAnimating("soil");
@@ -278,6 +295,9 @@ export default function GardenPage() {
     : 0;
   const mistRemainingMs = garden?.lastMistedAt
     ? Math.max(0, MIST_COOLDOWN_MS - (now - garden.lastMistedAt))
+    : 0;
+  const weedRemainingMs = garden?.lastTrimmedAt
+    ? Math.max(0, WEED_COOLDOWN_MS - (now - garden.lastTrimmedAt))
     : 0;
 
   const handleHarvest = useCallback(async () => {
@@ -453,13 +473,16 @@ export default function GardenPage() {
                 </div>
               )}
               {animating === "fork" && (
-                <div className="garden-animate-fork pointer-events-none absolute inset-0 z-10 overflow-visible">
+                <div
+                  className="garden-animate-fork pointer-events-none absolute inset-0 z-10 overflow-visible"
+                  style={{ ["--fork-duration" as string]: `${forkAnimationDurationMs}ms` }}
+                >
                   <div className="garden-tool-fork-wrap">
                     <Image
                       src={GARDEN_FORK_IMAGE}
                       alt=""
-                      width={86}
-                      height={86}
+                      width={52}
+                      height={52}
                       className="garden-tool-fork-swing object-contain"
                       unoptimized
                     />
@@ -498,8 +521,8 @@ export default function GardenPage() {
                     <Image
                       src={PLANT_MISTER_IMAGE}
                       alt=""
-                      width={86}
-                      height={86}
+                      width={52}
+                      height={52}
                       className="garden-tool-mist-swing object-contain"
                       unoptimized
                     />
@@ -666,14 +689,15 @@ export default function GardenPage() {
                   <button
                     type="button"
                     onClick={handleWeed}
-                    disabled={animating !== null || (inventory?.tools?.garden_scissors ?? 0) < 1}
-                    title={(inventory?.tools?.garden_scissors ?? 0) < 1 ? "請先至商店購買園藝剪刀" : undefined}
+                    disabled={animating !== null || (inventory?.tools?.garden_scissors ?? 0) < 1 || weedRemainingMs > 0}
+                    title={(inventory?.tools?.garden_scissors ?? 0) < 1 ? "請先至商店購買園藝剪刀" : weedRemainingMs > 0 ? "冷卻中" : undefined}
                     className="min-h-[48px] rounded-2xl bg-green-600 px-6 font-bold text-white shadow-md disabled:opacity-50 hover:bg-green-700 active:scale-[0.98] disabled:cursor-not-allowed"
                   >
                     ✂️ 修剪雜草
                     {(inventory?.tools?.garden_scissors ?? 0) < 1 && (
                       <span className="ml-1 text-xs font-normal opacity-90">（需園藝剪刀）</span>
                     )}
+                    {weedRemainingMs > 0 && ` · 冷卻 ${formatCooldown(weedRemainingMs)}`}
                   </button>
                 )}
                 <button

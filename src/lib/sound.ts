@@ -17,6 +17,20 @@ let sparkleAudio: HTMLAudioElement | null = null;
 let purchaseAudio: HTMLAudioElement | null = null;
 let scissorAudio: HTMLAudioElement | null = null;
 
+let audioUnlocked = false;
+
+/**
+ * 在使用者手勢當下解鎖音效（必須在 handler 內、任何 await 之前呼叫）。
+ * 部署環境常見因 await 後才 play 而被瀏覽器擋靜音，先解鎖可避免。
+ */
+export function unlockAudio(): void {
+  if (typeof window === "undefined" || audioUnlocked) return;
+  audioUnlocked = true;
+  const a = new Audio(WATER_DRIP_PATH);
+  a.volume = 0.001;
+  a.play().catch(() => {});
+}
+
 export function playFeedbackSound(correct: boolean): void {
   if (typeof window === "undefined") return;
   const path = correct ? CORRECT_PATH : WRONG_PATH;
@@ -108,6 +122,26 @@ export async function playSpraySound(): Promise<number> {
     };
     audio.addEventListener("loadedmetadata", onMeta, { once: true });
     setTimeout(() => done(0), 300);
+  });
+}
+
+/** 取得鬆土音效長度（ms），供鬆土動畫對齊時長 */
+export function getSoilSoundDurationMs(): Promise<number> {
+  if (typeof window === "undefined") return Promise.resolve(0);
+  const audio = soilAudio ?? new Audio(SOIL_SCRAPE_PATH);
+  if (soilAudio == null) soilAudio = audio;
+  if (Number.isFinite(audio.duration) && audio.duration > 0) return Promise.resolve(audio.duration * 1000);
+  return new Promise((resolve) => {
+    const done = (ms: number) => {
+      audio.removeEventListener("loadedmetadata", onMeta);
+      resolve(ms);
+    };
+    const onMeta = () => {
+      done(Number.isFinite(audio.duration) ? audio.duration * 1000 : 0);
+    };
+    audio.addEventListener("loadedmetadata", onMeta, { once: true });
+    audio.load();
+    setTimeout(() => done(0), 500);
   });
 }
 

@@ -31,7 +31,7 @@ export async function getTodayProgress(): Promise<{
   };
 }
 
-/** 每答一題時計入今日任務進度（Drill / Speed Quiz / 今日題組皆可呼叫） */
+/** 每答一題時計入今日任務進度（僅「今日任務」頁 /today 呼叫；練習、九九乘法不算） */
 export async function incrementTodayProgress(): Promise<{
   completed: number;
   total: number;

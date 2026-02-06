@@ -78,6 +78,8 @@ export interface GardenRecord {
   mistBoostUntil?: number;
   soilQualityBoost?: number;
   trowelUsed?: boolean;
+  /** 上次修剪雜草時間（用於 3 小時冷卻） */
+  lastTrimmedAt?: number;
 }
 
 let dbPromise: ReturnType<typeof openDB> | null = null;

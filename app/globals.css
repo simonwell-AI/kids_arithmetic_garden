@@ -349,12 +349,17 @@ body {
   animation: garden-fork-dirt 0.8s ease-out forwards;
 }
 
+/* 園藝叉持續搖擺至音效結束（時長由 --fork-duration 設定） */
 @keyframes garden-fork-tool-swing {
-  0% { transform: translate(0, 0) rotate(12deg); opacity: 0.95; }
-  25% { transform: translate(-4%, 6%) rotate(-18deg); opacity: 1; }
-  50% { transform: translate(2%, 10%) rotate(10deg); opacity: 1; }
-  75% { transform: translate(-2%, 12%) rotate(-14deg); opacity: 1; }
-  100% { transform: translate(0, 14%) rotate(8deg); opacity: 0.95; }
+  0% { transform: translate(0, 0) rotate(10deg); opacity: 0.95; }
+  12.5% { transform: translate(-3%, 4%) rotate(-14deg); opacity: 1; }
+  25% { transform: translate(2%, 6%) rotate(10deg); opacity: 1; }
+  37.5% { transform: translate(-4%, 7%) rotate(-12deg); opacity: 1; }
+  50% { transform: translate(2%, 8%) rotate(10deg); opacity: 1; }
+  62.5% { transform: translate(-3%, 9%) rotate(-10deg); opacity: 1; }
+  75% { transform: translate(2%, 10%) rotate(8deg); opacity: 1; }
+  87.5% { transform: translate(-2%, 11%) rotate(-8deg); opacity: 1; }
+  100% { transform: translate(0, 12%) rotate(6deg); opacity: 0.95; }
 }
 
 @keyframes garden-fork-sparkle {
@@ -365,17 +370,17 @@ body {
 
 .garden-tool-fork-wrap {
   position: absolute;
-  top: -4%;
-  right: 4%;
-  width: 86px;
-  height: 86px;
+  top: -2%;
+  right: 6%;
+  width: 52px;
+  height: 52px;
   z-index: 12;
   pointer-events: none;
 }
 
 .garden-tool-fork-swing {
   transform-origin: 75% 20%;
-  animation: garden-fork-tool-swing 1.2s ease-in-out forwards;
+  animation: garden-fork-tool-swing var(--fork-duration, 1.2s) ease-in-out forwards;
 }
 
 .garden-fork-sparkle {
@@ -427,10 +432,10 @@ body {
 
 .garden-tool-mist-wrap {
   position: absolute;
-  top: -4%;
-  left: 4%;
-  width: 86px;
-  height: 86px;
+  top: -2%;
+  left: 5%;
+  width: 52px;
+  height: 52px;
   z-index: 12;
   pointer-events: none;
 }

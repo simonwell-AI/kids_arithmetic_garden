@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getCoins, addCoins } from "@/src/persistence";
+import { getCoins } from "@/src/persistence";
 import { SHOP_CATALOG, SHOP_CATEGORIES, DEFAULT_BACKPACK_IMAGE } from "@/src/shop/catalog";
 import { purchaseItem, getInventoryCounts, TOOL_DISPLAY_NAMES, WATERING_CAN_DISPLAY_NAMES, BACKPACK_DISPLAY_NAMES } from "@/src/shop/purchase";
 import { setSelectedBackpack } from "@/src/persistence/inventory";
@@ -80,11 +80,6 @@ export default function ShopPage() {
     }
   }, [coins]);
 
-  const handleAddTestCoins = useCallback(async () => {
-    await addCoins(100);
-    load();
-  }, [load]);
-
   const handleBuy = useCallback(
     async (item: ShopItem) => {
       if (coins != null && coins < item.price) {
@@ -118,13 +113,6 @@ export default function ShopPage() {
             ← 返回首頁
           </Link>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleAddTestCoins}
-              className="rounded-lg border border-amber-300 bg-amber-100 px-3 py-1.5 text-sm font-medium text-amber-800 hover:bg-amber-200"
-            >
-              加值 100（測試）
-            </button>
             <span className="flex min-w-0 items-center gap-2 rounded-xl border-2 border-amber-200 bg-amber-50 px-4 py-2 font-bold text-amber-800 shadow-sm">
             <Image src={COIN_IMAGE} alt="" width={24} height={24} className="shrink-0 object-contain animate-coin-pulse" unoptimized />
             <span className="shrink-0">代幣：</span>
