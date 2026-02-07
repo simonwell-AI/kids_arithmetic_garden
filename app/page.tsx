@@ -60,6 +60,32 @@ export default function Home() {
         <p className="text-center text-base text-[var(--foreground)]/80 sm:text-lg md:text-xl">
           選一個模式開始練習吧！
         </p>
+        <section className="w-full max-w-lg rounded-2xl border border-[var(--primary)]/20 bg-white/60 px-4 py-4 text-left shadow-sm sm:px-5 sm:py-5">
+          <h2 className="mb-3 text-center text-lg font-bold text-[var(--foreground)] sm:text-xl">
+            🌱 Kids Arithmetic Garden｜兒童算術花園
+          </h2>
+          <p className="mb-3 text-sm leading-relaxed text-gray-700 sm:text-base">
+            Kids Arithmetic Garden 是一個專為國小小朋友設計的算數練習網站，透過簡單、直覺又有趣的方式，幫助孩子練習基礎數學能力。
+          </p>
+          <p className="mb-2 text-sm font-semibold text-gray-800 sm:text-base">網站主要提供：</p>
+          <ul className="mb-3 list-inside list-disc space-y-1 text-sm text-gray-700 sm:text-base">
+            <li>➕➖✖️➗ 加、減、乘、除 四則運算練習</li>
+            <li>📊 從簡單到進階的題目設計，符合國小學習階段</li>
+            <li>🎯 即時作答回饋，幫助孩子快速理解對錯</li>
+            <li>🌼 清爽、友善的介面，讓孩子能專心學習、不分心</li>
+          </ul>
+          <p className="mb-2 text-sm leading-relaxed text-gray-700 sm:text-base">
+            Kids Arithmetic Garden 就像一座小小的「算數花園」，讓孩子在反覆練習中慢慢培養：
+          </p>
+          <ul className="mb-3 list-inside list-disc space-y-1 text-sm text-gray-700 sm:text-base">
+            <li>數字敏感度</li>
+            <li>計算速度</li>
+            <li>對數學的信心與熟悉感</li>
+          </ul>
+          <p className="text-sm leading-relaxed text-gray-700 sm:text-base">
+            適合 國小低年級到中年級 的孩子使用，也很適合家長在家陪孩子一起練習數學。
+          </p>
+        </section>
         <div className="flex w-full max-w-md items-center justify-center gap-4 sm:max-w-lg">
           <span className="flex min-w-0 items-center gap-2 rounded-xl border-2 border-amber-200 bg-amber-50 px-4 py-2 font-bold text-amber-800 shadow-sm">
             <Image src={COIN_IMAGE} alt="" width={24} height={24} className="shrink-0 object-contain animate-coin-pulse" unoptimized />
