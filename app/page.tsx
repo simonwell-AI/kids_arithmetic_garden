@@ -54,12 +54,6 @@ export default function Home() {
           priority
           unoptimized
         />
-        <h1 className="text-center text-3xl font-bold text-[var(--foreground)] sm:text-4xl md:text-5xl">
-          算術練習
-        </h1>
-        <p className="text-center text-base text-[var(--foreground)]/80 sm:text-lg md:text-xl">
-          選一個模式開始練習吧！
-        </p>
         <section className="w-full max-w-lg rounded-2xl border border-[var(--primary)]/20 bg-white/60 px-4 py-4 text-left shadow-sm sm:px-5 sm:py-5">
           <h2 className="mb-3 text-center text-lg font-bold text-[var(--foreground)] sm:text-xl">
             🌱 Kids Arithmetic Garden｜兒童算術花園
@@ -92,11 +86,11 @@ export default function Home() {
             <span className="shrink-0">代幣：</span>
             <span className="min-w-[1.5rem] shrink-0 text-right tabular-nums">{coins ?? 0}</span>
           </span>
-          <Link href="/shop" className="rounded-xl border-2 border-[var(--primary)] bg-white px-4 py-2 font-semibold text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white">
-            商店
+          <Link href="/shop" className="flex items-center gap-1.5 rounded-xl border-2 border-[var(--primary)] bg-white px-4 py-2 font-semibold text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white">
+            🏪 商店
           </Link>
-          <Link href="/garden" className="rounded-xl border-2 border-green-300 bg-white px-4 py-2 font-semibold text-green-700 hover:bg-green-100">
-            我的花園
+          <Link href="/garden" className="flex items-center gap-1.5 rounded-xl border-2 border-green-300 bg-white px-4 py-2 font-semibold text-green-700 hover:bg-green-100">
+            🌱 我的花園
           </Link>
         </div>
         <TodayTask />

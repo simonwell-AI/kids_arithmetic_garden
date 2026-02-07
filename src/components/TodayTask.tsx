@@ -38,8 +38,8 @@ export function TodayTask() {
 
   return (
     <div className="w-full max-w-md rounded-2xl border-2 border-amber-200 bg-amber-50/80 p-4 shadow-sm sm:p-5">
-      <h2 className="mb-2 text-center text-lg font-bold text-amber-900 sm:text-xl">
-        今日任務
+      <h2 className="mb-2 flex items-center justify-center gap-2 text-center text-lg font-bold text-amber-900 sm:text-xl">
+        📋 今日任務
       </h2>
       <div className="mb-2 flex items-center justify-between text-sm font-semibold text-amber-800">
         <span>今日 {total} 題，已完成 {completed} / {total}</span>
