@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getCoins } from "@/src/persistence";
+import { getCoins, addCoins } from "@/src/persistence";
 import { SHOP_CATALOG, SHOP_CATEGORIES, DEFAULT_BACKPACK_IMAGE } from "@/src/shop/catalog";
 import { purchaseItem, getInventoryCounts, TOOL_DISPLAY_NAMES, WATERING_CAN_DISPLAY_NAMES, BACKPACK_DISPLAY_NAMES } from "@/src/shop/purchase";
 import { setSelectedBackpack } from "@/src/persistence/inventory";
@@ -107,6 +107,11 @@ export default function ShopPage() {
 
   const backpackFull = inventory != null && inventory.used >= inventory.capacity;
 
+  const handleTestAddCoins = useCallback(async () => {
+    await addCoins(100);
+    load();
+  }, [load]);
+
   return (
     <div className="flex min-h-[100dvh] flex-col items-center bg-[var(--background)] px-4 py-8 sm:px-6 sm:py-10">
         <div className="flex w-full max-w-lg flex-col gap-6">
@@ -124,6 +129,15 @@ export default function ShopPage() {
               {coins ?? 0}
             </span>
           </span>
+            {process.env.NODE_ENV === "development" && (
+              <button
+                type="button"
+                onClick={handleTestAddCoins}
+                className="rounded-lg border border-amber-300 bg-amber-100 px-3 py-1.5 text-sm font-semibold text-amber-800 hover:bg-amber-200 active:scale-[0.98]"
+              >
+                測試 +100 代幣
+              </button>
+            )}
           </div>
         </div>
         <h1 className="text-center text-2xl font-bold text-[var(--foreground)] sm:text-3xl">

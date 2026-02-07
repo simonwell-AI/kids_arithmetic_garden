@@ -308,7 +308,7 @@ export default function GardenPage() {
       setTimeout(() => {
         setAnimating(null);
         load();
-      }, Math.max(SPRAY_ANIMATION_DURATION_MS, soundMs));
+      }, Math.max(SPRAY_ANIMATION_DURATION_MS, soundMs || 0));
     } else {
       showMessage(result.message ?? "除蟲失敗");
     }
@@ -337,6 +337,7 @@ export default function GardenPage() {
     ? Math.max(0, BUG_HAND_COOLDOWN_MS - (now - garden.lastBugsRemovedAt))
     : 0;
   const hasBugs = garden?.hasBugs ?? false;
+  const showBugs = hasBugs;
 
   const handleHarvest = useCallback(async () => {
     const result = await harvest();
@@ -436,7 +437,7 @@ export default function GardenPage() {
                 }}
                 aria-hidden
               />
-              {hasBugs && !garden.isBloom && (
+              {showBugs && !garden.isBloom && (
                 <div
                   className="pointer-events-none absolute inset-0 z-[8] flex items-center justify-center gap-1"
                   aria-hidden
@@ -781,14 +782,14 @@ export default function GardenPage() {
                 </div>
               )}
             </div>
-            {hasBugs && !garden.isBloom && (
+            {showBugs && !garden.isBloom && (
               <p className="rounded-xl bg-amber-100 px-4 py-2 text-center text-sm font-semibold text-amber-900 shadow-sm">
                 植物有蟲害，成長變慢囉！快除蟲～
               </p>
             )}
             {!garden.isBloom && (
               <div className="flex flex-wrap justify-center gap-3">
-                {hasBugs && (
+                {showBugs && (
                   <>
                     <button
                       type="button"
@@ -797,7 +798,7 @@ export default function GardenPage() {
                       title={(inventory?.insecticide ?? 0) < 1 ? "請到商店購買殺蟲劑" : undefined}
                       className="min-h-[48px] rounded-2xl bg-red-100 px-6 font-bold text-red-800 shadow-sm disabled:opacity-50 hover:bg-red-200 active:scale-[0.98] disabled:cursor-not-allowed"
                     >
-                      🪲 噴殺蟲劑（× {inventory?.insecticide ?? 0}）
+                      🐛 噴殺蟲劑（× {inventory?.insecticide ?? 0}）
                     </button>
                     <button
                       type="button"
