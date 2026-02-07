@@ -1,9 +1,14 @@
 import { getDB, STORE_WALLET, WALLET_KEY, type WalletRecord } from "./db";
 import { getStreak } from "./dailyProgress";
 
-const DAILY_REWARD_COINS = 5;
+/** 今日任務完成代幣（較多） */
+const DAILY_REWARD_COINS = 6;
 /** 連續 7 天完成今日任務的額外代幣 */
 const STREAK_7_BONUS_COINS = 10;
+/** 練習／速度測驗答對 80% 以上完成時發放的代幣 */
+const COMPLETION_REWARD_COINS = 2;
+/** 答對率門檻（含）才發放完成獎勵 */
+const COMPLETION_REWARD_THRESHOLD = 0.8;
 
 function todayKey(): string {
   const now = new Date();
@@ -40,6 +45,19 @@ export async function addCoins(amount: number): Promise<number> {
   const next = Math.max(0, w.coins + amount);
   await (await getDB()).put(STORE_WALLET, { ...w, coins: next });
   return next;
+}
+
+/** 練習或速度測驗完成且答對率 ≥ 80% 時呼叫；發放代幣並回傳 { awarded, amount } */
+export async function awardCompletionReward(
+  correctCount: number,
+  totalCount: number
+): Promise<{ awarded: boolean; amount: number }> {
+  if (typeof window === "undefined") return { awarded: false, amount: 0 };
+  if (totalCount < 1) return { awarded: false, amount: 0 };
+  const rate = correctCount / totalCount;
+  if (rate < COMPLETION_REWARD_THRESHOLD) return { awarded: false, amount: 0 };
+  const next = await addCoins(COMPLETION_REWARD_COINS);
+  return { awarded: true, amount: COMPLETION_REWARD_COINS };
 }
 
 /** 今日任務完成時呼叫；若今日尚未領過則發放代幣並回傳 { claimed, newCoins, rewardAmount, streakBonus? } */

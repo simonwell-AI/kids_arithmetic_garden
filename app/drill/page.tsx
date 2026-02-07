@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DrillSettings, type DrillSettingsState } from "@/src/components/DrillSettings";
+import { MixedSpeedQuiz } from "@/src/components/MixedSpeedQuiz";
 import { QuestionCard } from "@/src/components/QuestionCard";
 import { NumericKeypad } from "@/src/components/NumericKeypad";
 import { FeedbackToast } from "@/src/components/FeedbackToast";
@@ -18,15 +19,16 @@ import {
   saveAttempt,
   createSessionId,
   createAttemptId,
+  awardCompletionReward,
 } from "@/src/persistence";
 import { playFeedbackSound } from "@/src/lib/sound";
 import { speakText, stopSpeaking } from "@/src/lib/speech";
 import type { AttemptRecord } from "@/src/persistence/db";
 
-type Phase = "settings" | "questions" | "end";
+type Phase = "menu" | "settings" | "questions" | "end" | "mixedSpeed";
 
 export default function DrillPage() {
-  const [phase, setPhase] = useState<Phase>("settings");
+  const [phase, setPhase] = useState<Phase>("menu");
   const [settings, setSettings] = useState<DrillSettingsState | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -40,6 +42,7 @@ export default function DrillPage() {
   const [totalTimeMs, setTotalTimeMs] = useState(0);
   const [attempts, setAttempts] = useState<AttemptRecord[]>([]);
   const [weightsMap, setWeightsMap] = useState<Record<string, number>>({});
+  const [rewardCoins, setRewardCoins] = useState<number | null>(null);
 
   const question = questions[index];
   const speakEnabled = settings?.speech ?? false;
@@ -162,17 +165,20 @@ export default function DrillPage() {
     }
   }, [question, value, phase, sessionId, startedAt]);
 
-  const handleDismissFeedback = useCallback(() => {
+  const handleDismissFeedback = useCallback(async () => {
     setShowFeedback(false);
     setValue("");
     if (index >= questions.length - 1) {
       if (sessionId) updateSessionEnd(sessionId, Date.now());
+      const totalCount = questions.length;
+      const result = await awardCompletionReward(correctCount, totalCount);
+      setRewardCoins(result.awarded ? result.amount : 0);
       setPhase("end");
       return;
     }
     setIndex((i) => i + 1);
     setStartedAt(Date.now());
-  }, [index, questions.length, sessionId]);
+  }, [index, questions.length, sessionId, correctCount]);
 
   const handleRetryWrong = useCallback(() => {
     const wrongAttempts = attempts.filter((a) => !a.correct);
@@ -180,6 +186,7 @@ export default function DrillPage() {
       setPhase("settings");
       setSettings(null);
       setQuestions([]);
+      setRewardCoins(null);
       return;
     }
     const qs: Question[] = wrongAttempts.map((a) => {
@@ -219,7 +226,54 @@ export default function DrillPage() {
         >
           ← 返回首頁
         </Link>
-        {phase === "settings" && <DrillSettings onSubmit={handleStartDrill} />}
+        {phase === "menu" && (
+          <div className="flex w-full max-w-md flex-col gap-4 sm:max-w-lg">
+            <h2 className="text-xl font-bold text-[var(--foreground)] sm:text-2xl">
+              練習題
+            </h2>
+            <p className="text-gray-600">選一個模式</p>
+            <div className="flex flex-col gap-4">
+              <button
+                type="button"
+                onClick={() => setPhase("settings")}
+                className="min-h-[56px] rounded-2xl bg-[var(--primary)] px-6 py-4 text-lg font-bold text-white shadow-lg transition hover:bg-[var(--primary-hover)] active:scale-[0.98] touch-manipulation"
+              >
+                自訂練習（題數與運算類型）
+              </button>
+              <button
+                type="button"
+                onClick={() => setPhase("mixedSpeed")}
+                className="min-h-[56px] rounded-2xl bg-amber-400 px-6 py-4 text-lg font-bold text-amber-950 shadow transition hover:bg-amber-500 active:scale-[0.98] touch-manipulation"
+              >
+                綜合題速度測驗（60 秒）
+              </button>
+            </div>
+          </div>
+        )}
+        {phase === "settings" && (
+          <>
+            <button
+              type="button"
+              onClick={() => setPhase("menu")}
+              className="self-start text-sm font-medium text-gray-600 hover:underline"
+            >
+              ← 返回選擇
+            </button>
+            <DrillSettings onSubmit={handleStartDrill} />
+          </>
+        )}
+        {phase === "mixedSpeed" && (
+          <>
+            <button
+              type="button"
+              onClick={() => setPhase("menu")}
+              className="self-start text-sm font-medium text-gray-600 hover:underline"
+            >
+              ← 返回選擇
+            </button>
+            <MixedSpeedQuiz onBack={() => setPhase("menu")} />
+          </>
+        )}
         {phase === "questions" && question && (
           <>
             <p className="text-sm font-semibold text-gray-600">
@@ -246,11 +300,13 @@ export default function DrillPage() {
             correctCount={correctCount}
             totalCount={totalCount}
             avgTimeMs={avgTimeMs}
+            rewardCoins={rewardCoins ?? undefined}
             onRetryWrong={handleRetryWrong}
             onNewDrill={() => {
-              setPhase("settings");
+              setPhase("menu");
               setSettings(null);
               setQuestions([]);
+              setRewardCoins(null);
             }}
             onGoHome={() => window.location.assign("/")}
           />

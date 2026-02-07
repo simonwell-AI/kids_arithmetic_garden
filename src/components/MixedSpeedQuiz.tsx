@@ -5,32 +5,30 @@ import { QuestionCard } from "@/src/components/QuestionCard";
 import { NumericKeypad } from "@/src/components/NumericKeypad";
 import { FeedbackToast } from "@/src/components/FeedbackToast";
 import type { Question } from "@/src/generator";
+import { generateQuestions } from "@/src/generator";
 import { playFeedbackSound } from "@/src/lib/sound";
 import { awardCompletionReward } from "@/src/persistence/wallet";
 
 const DURATION_MS = 60 * 1000;
-const TOTAL_QUESTIONS = 81;
 
-function buildTimesTableQuestions(): Question[] {
-  const qs: Question[] = [];
-  for (let a = 1; a <= 9; a++) {
-    for (let b = 1; b <= 9; b++) {
-      qs.push({
-        a,
-        b,
-        op: "mul",
-        answer: a * b,
-        skillKey: `mul_${a}x${b}`,
-      });
-    }
-  }
-  return qs.sort(() => Math.random() - 0.5);
+function buildMixedQuestions(): Question[] {
+  return generateQuestions({
+    operation: "mixed",
+    rangeMin: 0,
+    rangeMax: 20,
+    count: 80,
+    difficulty: "normal",
+  });
 }
 
-export function SpeedQuiz() {
+export interface MixedSpeedQuizProps {
+  onBack?: () => void;
+}
+
+export function MixedSpeedQuiz({ onBack }: MixedSpeedQuizProps) {
   const [phase, setPhase] = useState<"idle" | "playing" | "done">("idle");
   const [timeLeftMs, setTimeLeftMs] = useState(DURATION_MS);
-  const [questions] = useState(() => buildTimesTableQuestions());
+  const [questions, setQuestions] = useState<Question[]>([]);
   const [index, setIndex] = useState(0);
   const [value, setValue] = useState("");
   const [correctCount, setCorrectCount] = useState(0);
@@ -39,6 +37,7 @@ export function SpeedQuiz() {
   const [lastTimeMs, setLastTimeMs] = useState(0);
   const [startedAt, setStartedAt] = useState(0);
   const [rewardCoins, setRewardCoins] = useState<number | null>(null);
+  const [genError, setGenError] = useState<string | null>(null);
   const hasAwardedRef = useRef(false);
 
   const question = questions[index];
@@ -57,16 +56,32 @@ export function SpeedQuiz() {
     return () => clearInterval(t);
   }, [phase, timeLeftMs]);
 
+  useEffect(() => {
+    if (phase !== "done" || hasAwardedRef.current) return;
+    const totalAnswered = index + (showFeedback ? 0 : 1);
+    if (totalAnswered < 1) return;
+    hasAwardedRef.current = true;
+    awardCompletionReward(correctCount, totalAnswered).then((result) => {
+      if (result.awarded) setRewardCoins(result.amount);
+    });
+  }, [phase, index, showFeedback, correctCount]);
+
   const handleStart = useCallback(() => {
-    setPhase("playing");
-    setTimeLeftMs(DURATION_MS);
-    setIndex(0);
-    setValue("");
-    setCorrectCount(0);
-    setShowFeedback(false);
-    setStartedAt(Date.now());
-    setRewardCoins(null);
-    hasAwardedRef.current = false;
+    setGenError(null);
+    try {
+      setQuestions(buildMixedQuestions());
+      setPhase("playing");
+      setTimeLeftMs(DURATION_MS);
+      setIndex(0);
+      setValue("");
+      setCorrectCount(0);
+      setShowFeedback(false);
+      setStartedAt(Date.now());
+      setRewardCoins(null);
+      hasAwardedRef.current = false;
+    } catch (e) {
+      setGenError(e instanceof Error ? e.message : "題目產生失敗，請再試一次");
+    }
   }, []);
 
   const handleSubmit = useCallback(async () => {
@@ -98,31 +113,37 @@ export function SpeedQuiz() {
     return (
       <div className="flex flex-col items-center gap-6 rounded-2xl bg-white p-6 shadow-lg sm:p-8">
         <h2 className="text-xl font-bold text-[var(--foreground)] sm:text-2xl">
-          速度測驗（60 秒）
+          綜合題速度測驗（60 秒）
         </h2>
         <p className="text-center text-gray-600">
-          60 秒內盡量答對更多乘法題
+          60 秒內盡量答對更多加減乘除題
         </p>
-        <button
-          type="button"
-          onClick={handleStart}
-          className="min-h-[52px] rounded-xl bg-amber-400 px-8 text-lg font-bold text-amber-950 shadow hover:bg-amber-500 active:scale-[0.98] touch-manipulation"
-        >
-          開始
-        </button>
+        {genError && (
+          <p className="rounded-xl bg-rose-100 px-4 py-2 text-center text-sm font-semibold text-rose-800">
+            {genError}
+          </p>
+        )}
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={handleStart}
+            className="min-h-[52px] rounded-xl bg-amber-400 px-8 text-lg font-bold text-amber-950 shadow hover:bg-amber-500 active:scale-[0.98] touch-manipulation"
+          >
+            開始
+          </button>
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="min-h-[52px] rounded-xl border-2 border-gray-300 bg-white px-6 text-lg font-semibold text-gray-700 hover:bg-gray-50 active:scale-[0.98] touch-manipulation"
+            >
+              返回選擇
+            </button>
+          )}
+        </div>
       </div>
     );
   }
-
-  useEffect(() => {
-    if (phase !== "done" || hasAwardedRef.current) return;
-    const totalAnswered = index + (showFeedback ? 0 : 1);
-    if (totalAnswered < 1) return;
-    hasAwardedRef.current = true;
-    awardCompletionReward(correctCount, totalAnswered).then((result) => {
-      if (result.awarded) setRewardCoins(result.amount);
-    });
-  }, [phase, index, showFeedback, correctCount]);
 
   if (phase === "done") {
     const totalAnswered = index + (showFeedback ? 0 : 1);
@@ -141,19 +162,38 @@ export function SpeedQuiz() {
             🪙 答對 80% 以上，獲得 {rewardCoins} 代幣！
           </p>
         )}
-        <button
-          type="button"
-          onClick={handleStart}
-          className="min-h-[48px] rounded-xl bg-[var(--primary)] px-6 font-bold text-white hover:bg-[var(--primary-hover)] touch-manipulation"
-        >
-          再玩一次
-        </button>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={handleStart}
+            className="min-h-[48px] rounded-xl bg-[var(--primary)] px-6 font-bold text-white hover:bg-[var(--primary-hover)] touch-manipulation"
+          >
+            再玩一次
+          </button>
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="min-h-[48px] rounded-xl border-2 border-gray-300 bg-white px-6 font-semibold text-gray-700 hover:bg-gray-50 touch-manipulation"
+            >
+              返回選擇
+            </button>
+          )}
+        </div>
       </div>
     );
   }
 
   const timeLeft = Math.ceil(timeLeftMs / 1000);
   const timePct = Math.max(0, Math.min(100, (timeLeftMs / DURATION_MS) * 100));
+
+  if (phase === "playing" && questions.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-4 rounded-2xl bg-white p-6 shadow-lg">
+        <p className="text-gray-600">準備題目中…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex w-full max-w-lg flex-col items-center gap-6">

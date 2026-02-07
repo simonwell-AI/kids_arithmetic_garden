@@ -4,6 +4,8 @@ export interface DrillEndScreenProps {
   correctCount: number;
   totalCount: number;
   avgTimeMs: number;
+  /** 答對 80% 以上時獲得的代幣數（0 表示未達標） */
+  rewardCoins?: number;
   onRetryWrong: () => void;
   onNewDrill: () => void;
   onGoHome: () => void;
@@ -13,6 +15,7 @@ export function DrillEndScreen({
   correctCount,
   totalCount,
   avgTimeMs,
+  rewardCoins,
   onRetryWrong,
   onNewDrill,
   onGoHome,
@@ -26,6 +29,11 @@ export function DrillEndScreen({
       <h2 className="text-xl font-bold text-[var(--foreground)] sm:text-2xl md:text-3xl">
         練習結束
       </h2>
+      {rewardCoins != null && rewardCoins > 0 && (
+        <p className="rounded-xl bg-amber-100 px-4 py-2 text-center text-base font-bold text-amber-900 sm:text-lg">
+          🪙 答對 80% 以上，獲得 {rewardCoins} 代幣！
+        </p>
+      )}
       <div className="grid grid-cols-2 gap-3 text-center sm:gap-4 md:gap-5">
         <div className="rounded-xl bg-gray-50 p-3 sm:p-4 md:p-5">
           <p className="text-2xl font-bold text-[var(--primary)] sm:text-3xl md:text-4xl">
