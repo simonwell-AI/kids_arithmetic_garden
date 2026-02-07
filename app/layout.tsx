@@ -12,6 +12,9 @@ const nunito = Nunito({
 export const metadata: Metadata = {
   title: "算術練習 | Kid Arithmetic",
   description: "兒童算術練習：加減乘除與九九乘法表",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export const viewport: Viewport = {
@@ -29,11 +32,14 @@ export default function RootLayout({
   return (
     <html lang="zh-TW" suppressHydrationWarning>
       <body
-        className={`${nunito.variable} font-sans antialiased min-h-[100dvh] safe-area-padding`}
+        className={`${nunito.variable} flex min-h-[100dvh] flex-col font-sans antialiased safe-area-padding`}
         suppressHydrationWarning
       >
         <BGMControl />
-        {children}
+        <main className="flex-1">{children}</main>
+        <footer className="shrink-0 border-t border-gray-200 bg-gray-50 py-3 text-center text-sm text-gray-600">
+          © 2026 張賽門 (Simon Chang). All rights reserved.
+        </footer>
       </body>
     </html>
   );
