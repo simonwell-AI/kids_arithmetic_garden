@@ -4,6 +4,7 @@ import {
   useWater,
   useFertilizerBasic,
   useFertilizerPremium,
+  useInsecticide,
   hasTool,
 } from "./inventory";
 import { getHasWeeds, setLastGardenVisit } from "./gardenVisit";
@@ -23,6 +24,12 @@ const FORK_COOLDOWN_MS = 5 * 60 * 1000;
 const MIST_COOLDOWN_MS = 5 * 60 * 1000;
 /** 修剪雜草冷卻時間（3 小時） */
 const WEED_COOLDOWN_MS = 3 * 60 * 60 * 1000;
+/** 蟲害時成長速率懲罰係數 */
+const BUG_PENALTY_MULTIPLIER = 0.6;
+/** 徒手抓蟲冷卻時間（2 小時） */
+const BUG_HAND_COOLDOWN_MS = 2 * 60 * 60 * 1000;
+/** 進入花園時有蟲害的機率（僅在幼苗以上且目前無蟲時判定） */
+const BUG_PROBABILITY = 0.15;
 const FORK_GROWTH_BONUS = 0.12;
 const MIST_GROWTH_BONUS = 0.05;
 const TROWEL_GROWTH_BONUS = 0.5;
@@ -54,6 +61,9 @@ function getGrowthRate(record: GardenRecord): number {
       ? WEED_PENALTY_MIST_MULTIPLIER
       : WEED_PENALTY_MULTIPLIER;
   }
+  if (record.hasBugs) {
+    rate *= BUG_PENALTY_MULTIPLIER;
+  }
   return rate;
 }
 
@@ -79,7 +89,7 @@ async function saveGarden(record: GardenRecord): Promise<void> {
   await db.put(STORE_GARDEN, record);
 }
 
-/** 取得花園狀態；會依時間計算當前成長階段 */
+/** 取得花園狀態；會依時間計算當前成長階段；有機率在幼苗以上時觸發蟲害 */
 export async function getGarden(): Promise<{
   seedId: string;
   plantedAt: number;
@@ -95,12 +105,18 @@ export async function getGarden(): Promise<{
   soilQualityBoost?: number;
   trowelUsed?: boolean;
   lastTrimmedAt?: number;
+  hasBugs?: boolean;
+  lastBugsRemovedAt?: number;
 } | null> {
   if (typeof window === "undefined") return null;
   const record = await getGardenRecord();
   if (!record) return null;
   const value = computeGrowthValue(record);
   const growthStage = growthValueToStage(value);
+  if (growthStage >= 1 && !record.hasBugs && Math.random() < BUG_PROBABILITY) {
+    record.hasBugs = true;
+    await saveGarden(record);
+  }
   return {
     seedId: record.seedId,
     plantedAt: record.plantedAt,
@@ -116,6 +132,8 @@ export async function getGarden(): Promise<{
     soilQualityBoost: record.soilQualityBoost,
     trowelUsed: record.trowelUsed,
     lastTrimmedAt: record.lastTrimmedAt,
+    hasBugs: record.hasBugs ?? false,
+    lastBugsRemovedAt: record.lastBugsRemovedAt,
   };
 }
 
@@ -261,5 +279,38 @@ export async function applyPottingSoil(): Promise<{ success: boolean; message?: 
   record.growthValue = computeGrowthValue(record);
   record.soilQualityBoost = SOIL_QUALITY_BOOST;
   await saveGarden(record);
+  return { success: true };
+}
+
+/** 噴殺蟲劑除蟲：消耗 1 殺蟲劑，清除蟲害 */
+export async function removeBugsWithSpray(): Promise<{ success: boolean; message?: string }> {
+  if (typeof window === "undefined") return { success: false, message: "僅支援瀏覽器" };
+  const record = await getGardenRecord();
+  if (!record) return { success: false, message: "尚未種植" };
+  if (!record.hasBugs) return { success: false, message: "目前沒有蟲害" };
+  const used = await useInsecticide();
+  if (!used) return { success: false, message: "沒有殺蟲劑，請到商店購買" };
+  record.growthValue = computeGrowthValue(record);
+  record.hasBugs = false;
+  await saveGarden(record);
+  setLastGardenVisit();
+  return { success: true };
+}
+
+/** 徒手抓蟲：無消耗，冷卻 2 小時 */
+export async function removeBugsWithHand(): Promise<{ success: boolean; message?: string }> {
+  if (typeof window === "undefined") return { success: false, message: "僅支援瀏覽器" };
+  const record = await getGardenRecord();
+  if (!record) return { success: false, message: "尚未種植" };
+  if (!record.hasBugs) return { success: false, message: "目前沒有蟲害" };
+  const now = Date.now();
+  if (record.lastBugsRemovedAt != null && now - record.lastBugsRemovedAt < BUG_HAND_COOLDOWN_MS) {
+    return { success: false, message: "需再等一段時間才能再抓蟲" };
+  }
+  record.growthValue = computeGrowthValue(record);
+  record.hasBugs = false;
+  record.lastBugsRemovedAt = now;
+  await saveGarden(record);
+  setLastGardenVisit();
   return { success: true };
 }

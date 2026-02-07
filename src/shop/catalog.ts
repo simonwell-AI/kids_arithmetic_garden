@@ -9,6 +9,7 @@ export type ShopItemType =
   | "water"
   | "fertilizer_basic"
   | "fertilizer_premium"
+  | "insecticide"
   | "backpack_expand"
   | "tool"
   | "watering_can"
@@ -35,6 +36,7 @@ export const SHOP_CATALOG: ShopItem[] = [
   { id: "water", type: "water", name: "水", price: 1 },
   { id: "fertilizer_basic", type: "fertilizer_basic", name: "一般肥料", price: 5 },
   { id: "fertilizer_premium", type: "fertilizer_premium", name: "高級肥料", price: 12 },
+  { id: "insecticide", type: "insecticide", name: "殺蟲劑", price: 6 },
   { id: "backpack_expand", type: "backpack_expand", name: "擴充背包", price: 20, capacityExpand: 5 },
   { id: "tool_fertilizer_bottle", type: "tool", name: "肥料瓶", price: 8, toolId: "fertilizer_bottle", toolImagePath: `${GARGEN_TOOLS_BASE}/Fertilizer Bottle.png` },
   { id: "tool_garden_fork", type: "tool", name: "園藝叉", price: 8, toolId: "garden_fork", toolImagePath: `${GARGEN_TOOLS_BASE}/Garden Fork.png` },
@@ -53,7 +55,7 @@ export const SHOP_CATALOG: ShopItem[] = [
 /** 分類與對應類型，用於分區顯示 */
 export const SHOP_CATEGORIES: { key: string; label: string; types: ShopItemType[] }[] = [
   { key: "seed", label: "種子", types: ["seed"] },
-  { key: "consumable", label: "消耗品", types: ["water", "fertilizer_basic", "fertilizer_premium"] },
+  { key: "consumable", label: "消耗品", types: ["water", "fertilizer_basic", "fertilizer_premium", "insecticide"] },
   { key: "tool", label: "園藝工具", types: ["tool"] },
   { key: "watering_can", label: "水壺外觀", types: ["watering_can"] },
   { key: "backpack", label: "背包", types: ["backpack_expand", "backpack"] },

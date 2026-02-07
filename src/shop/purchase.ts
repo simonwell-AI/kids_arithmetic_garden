@@ -3,6 +3,7 @@ import {
   addWater,
   addFertilizerBasic,
   addFertilizerPremium,
+  addInsecticide,
   addSeed,
   addTool,
   addWateringCan,
@@ -32,6 +33,9 @@ export async function purchaseItem(item: ShopItem): Promise<{ success: boolean; 
       return { success: true };
     case "fertilizer_premium":
       await addFertilizerPremium(1);
+      return { success: true };
+    case "insecticide":
+      await addInsecticide(1);
       return { success: true };
     case "seed":
       if (item.seedId) {
@@ -69,6 +73,7 @@ export async function getInventoryCounts(): Promise<{
   water: number;
   fertilizerBasic: number;
   fertilizerPremium: number;
+  insecticide: number;
   seeds: Record<string, number>;
   tools: Record<string, number>;
   wateringCans: Record<string, number>;
@@ -84,6 +89,7 @@ export async function getInventoryCounts(): Promise<{
     water: inv.water,
     fertilizerBasic: inv.fertilizerBasic,
     fertilizerPremium: inv.fertilizerPremium,
+    insecticide: inv.insecticide ?? 0,
     seeds: inv.seeds ?? {},
     tools: inv.tools ?? {},
     wateringCans: inv.wateringCans ?? {},

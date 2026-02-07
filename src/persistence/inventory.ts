@@ -9,6 +9,7 @@ async function getInventory(): Promise<InventoryRecord> {
     water: 0,
     fertilizerBasic: 0,
     fertilizerPremium: 0,
+    insecticide: 0,
     seeds: { pink_flower: 1 },
     tools: {},
     wateringCans: {},
@@ -22,6 +23,7 @@ async function getInventory(): Promise<InventoryRecord> {
 function normalizeInv(record: InventoryRecord): InventoryRecord {
   return {
     ...record,
+    insecticide: record.insecticide ?? 0,
     tools: record.tools ?? {},
     wateringCans: record.wateringCans ?? {},
     backpacks: record.backpacks ?? {},
@@ -31,17 +33,18 @@ function normalizeInv(record: InventoryRecord): InventoryRecord {
 
 export async function getInventoryState(): Promise<InventoryRecord> {
   if (typeof window === "undefined") {
-    return {
-      id: INVENTORY_KEY,
-      water: 0,
-      fertilizerBasic: 0,
-      fertilizerPremium: 0,
-      seeds: {},
-      tools: {},
-      wateringCans: {},
-      backpacks: {},
-      capacity: 5,
-    };
+  return {
+    id: INVENTORY_KEY,
+    water: 0,
+    fertilizerBasic: 0,
+    fertilizerPremium: 0,
+    insecticide: 0,
+    seeds: {},
+    tools: {},
+    wateringCans: {},
+    backpacks: {},
+    capacity: 5,
+  };
   }
   const inv = await getInventory();
   return normalizeInv(inv);
@@ -57,7 +60,7 @@ export function totalItemCount(inv: InventoryRecord): number {
   const toolCount = sumCounts(invN.tools ?? {});
   const wateringCanCount = sumCounts(invN.wateringCans ?? {});
   const backpackCount = sumCounts(invN.backpacks ?? {});
-  return invN.water + invN.fertilizerBasic + invN.fertilizerPremium + seedCount + toolCount + wateringCanCount + backpackCount;
+  return invN.water + invN.fertilizerBasic + invN.fertilizerPremium + (invN.insecticide ?? 0) + seedCount + toolCount + wateringCanCount + backpackCount;
 }
 
 export async function addTool(toolId: string, count: number): Promise<void> {
@@ -123,6 +126,23 @@ export async function addFertilizerPremium(count: number): Promise<void> {
   const inv = await getInventory();
   inv.fertilizerPremium = Math.max(0, inv.fertilizerPremium + count);
   await (await getDB()).put(STORE_INVENTORY, inv);
+}
+
+export async function addInsecticide(count: number): Promise<void> {
+  if (typeof window === "undefined") return;
+  const inv = await getInventory();
+  inv.insecticide = Math.max(0, (inv.insecticide ?? 0) + count);
+  await (await getDB()).put(STORE_INVENTORY, inv);
+}
+
+export async function useInsecticide(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  const inv = await getInventory();
+  const n = inv.insecticide ?? 0;
+  if (n < 1) return false;
+  inv.insecticide = n - 1;
+  await (await getDB()).put(STORE_INVENTORY, inv);
+  return true;
 }
 
 export async function addSeed(seedId: string, count: number): Promise<void> {

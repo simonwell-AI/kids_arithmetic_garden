@@ -55,6 +55,8 @@ export interface InventoryRecord {
   water: number;
   fertilizerBasic: number;
   fertilizerPremium: number;
+  /** 殺蟲劑（消耗品，花園除蟲用） */
+  insecticide?: number;
   seeds: Record<string, number>;
   tools?: Record<string, number>;
   wateringCans?: Record<string, number>;
@@ -80,6 +82,10 @@ export interface GardenRecord {
   trowelUsed?: boolean;
   /** 上次修剪雜草時間（用於 3 小時冷卻） */
   lastTrimmedAt?: number;
+  /** 是否有蟲害（降低成長速率） */
+  hasBugs?: boolean;
+  /** 上次徒手抓蟲時間（用於冷卻） */
+  lastBugsRemovedAt?: number;
 }
 
 let dbPromise: ReturnType<typeof openDB> | null = null;

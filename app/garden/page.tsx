@@ -14,6 +14,8 @@ import {
   mistPlant,
   repotPlant,
   applyPottingSoil,
+  removeBugsWithSpray,
+  removeBugsWithHand,
 } from "@/src/persistence/garden";
 import { getInventoryState } from "@/src/persistence/inventory";
 import { getHasWeeds, setLastGardenVisit } from "@/src/persistence/gardenVisit";
@@ -21,7 +23,7 @@ import { getSeedGrowthImagePath, SEED_NAMES } from "@/src/garden/assets";
 import { SHOP_CATALOG } from "@/src/shop/catalog";
 import { unlockAudio, playWaterSound, playSpraySound, playSoilSound, playSparkleSound, playScissorSound, getScissorSoundDurationMs, getSpraySoundDurationMs, getSoilSoundDurationMs } from "@/src/lib/sound";
 
-type GardenAnimating = "water" | "fertilize" | "weed" | "fork" | "mist" | "soil" | null;
+type GardenAnimating = "water" | "fertilize" | "weed" | "fork" | "mist" | "soil" | "spray" | null;
 
 const ANIMATION_DURATION_MS = 1200;
 /** 澆水動畫較長：水壺傾倒 + 水流，總時長 */
@@ -42,6 +44,10 @@ const FORK_COOLDOWN_MS = 5 * 60 * 1000;
 const MIST_COOLDOWN_MS = 5 * 60 * 1000;
 /** 修剪雜草冷卻時間（與 garden.ts 一致：3 小時） */
 const WEED_COOLDOWN_MS = 3 * 60 * 60 * 1000;
+/** 徒手抓蟲冷卻時間（與 garden.ts 一致：2 小時） */
+const BUG_HAND_COOLDOWN_MS = 2 * 60 * 60 * 1000;
+/** 噴殺蟲劑動畫時長 */
+const SPRAY_ANIMATION_DURATION_MS = 2400;
 /** 商店消耗品圖示（與商店顯示一致） */
 const FERTILIZER_BASIC_IMAGE = "/garden-assets/gargen_tools/normal fertilizer.png";
 const FERTILIZER_PREMIUM_IMAGE = "/garden-assets/gargen_tools/Advanced_fertilizer.png";
@@ -52,6 +58,7 @@ const PLANT_MISTER_IMAGE = "/garden-assets/gargen_tools/Plant Mister.png";
 const GARDEN_SCISSORS_IMAGE = "/garden-assets/gargen_tools/Garden Scissors.png";
 const GARDEN_TROWEL_IMAGE = "/garden-assets/gargen_tools/Garden Trowel.png";
 const POTTING_SOIL_IMAGE = "/garden-assets/gargen_tools/Potting Soil.png";
+const INSECTICIDE_SPRAY_IMAGE = "/garden-assets/gargen_tools/Caterpillar_Spray.png";
 
 const GRASS_BASE = "/garden-assets/grass";
 const GRASS_IMAGES = [1, 2, 3, 4, 5, 6, 7, 8].map((n) => `${GRASS_BASE}/grass_${n}.png`);
@@ -127,8 +134,9 @@ export default function GardenPage() {
       const hasForkCooldown = garden.lastForkedAt != null && current - garden.lastForkedAt < FORK_COOLDOWN_MS;
       const hasMistCooldown = garden.lastMistedAt != null && current - garden.lastMistedAt < MIST_COOLDOWN_MS;
       const hasWeedCooldown = garden.lastTrimmedAt != null && current - garden.lastTrimmedAt < WEED_COOLDOWN_MS;
+      const hasBugHandCooldown = garden.lastBugsRemovedAt != null && current - garden.lastBugsRemovedAt < BUG_HAND_COOLDOWN_MS;
       setNow(current);
-      if (!hasForkCooldown && !hasMistCooldown && !hasWeedCooldown) {
+      if (!hasForkCooldown && !hasMistCooldown && !hasWeedCooldown && !hasBugHandCooldown) {
         clearInterval(t);
       }
     }, 1000);
@@ -290,6 +298,32 @@ export default function GardenPage() {
     }
   }, [load]);
 
+  const handleSpray = useCallback(async () => {
+    unlockAudio();
+    const result = await removeBugsWithSpray();
+    if (result.success) {
+      setAnimating("spray");
+      const soundMs = await playSpraySound();
+      showMessage("蟲蟲趕走了！");
+      setTimeout(() => {
+        setAnimating(null);
+        load();
+      }, Math.max(SPRAY_ANIMATION_DURATION_MS, soundMs));
+    } else {
+      showMessage(result.message ?? "除蟲失敗");
+    }
+  }, [load]);
+
+  const handleBugHand = useCallback(async () => {
+    const result = await removeBugsWithHand();
+    if (result.success) {
+      showMessage("蟲蟲趕走了！");
+      load();
+    } else {
+      showMessage(result.message ?? "抓蟲失敗");
+    }
+  }, [load]);
+
   const forkRemainingMs = garden?.lastForkedAt
     ? Math.max(0, FORK_COOLDOWN_MS - (now - garden.lastForkedAt))
     : 0;
@@ -299,6 +333,10 @@ export default function GardenPage() {
   const weedRemainingMs = garden?.lastTrimmedAt
     ? Math.max(0, WEED_COOLDOWN_MS - (now - garden.lastTrimmedAt))
     : 0;
+  const bugHandRemainingMs = garden?.lastBugsRemovedAt
+    ? Math.max(0, BUG_HAND_COOLDOWN_MS - (now - garden.lastBugsRemovedAt))
+    : 0;
+  const hasBugs = garden?.hasBugs ?? false;
 
   const handleHarvest = useCallback(async () => {
     const result = await harvest();
@@ -398,6 +436,27 @@ export default function GardenPage() {
                 }}
                 aria-hidden
               />
+              {hasBugs && !garden.isBloom && (
+                <div
+                  className="pointer-events-none absolute inset-0 z-[8] flex items-center justify-center gap-1"
+                  aria-hidden
+                >
+                  {[0, 1, 2].map((i) => (
+                    <span
+                      key={`bug-${i}`}
+                      className="garden-bug-float text-2xl sm:text-3xl opacity-90"
+                      style={{
+                        position: "absolute",
+                        top: `${28 + (i % 3) * 20}%`,
+                        left: `${30 + (i % 2) * 28 + i * 4}%`,
+                        animationDelay: `${i * 0.2}s`,
+                      }}
+                    >
+                      🐛
+                    </span>
+                  ))}
+                </div>
+              )}
               {hasWeeds && (
                 <div
                   className={`pointer-events-none absolute bottom-0 left-0 right-0 h-[45%] overflow-hidden ${animating === "weed" ? "garden-animate-weed garden-weed-layer" : ""}`}
@@ -682,9 +741,75 @@ export default function GardenPage() {
                   ))}
                 </div>
               )}
+              {animating === "spray" && (
+                <div
+                  className="garden-animate-spray pointer-events-none absolute inset-0 z-10 overflow-visible"
+                  style={{ ["--spray-duration" as string]: `${SPRAY_ANIMATION_DURATION_MS}ms` }}
+                >
+                  <div className="garden-tool-spray-wrap">
+                    <Image
+                      src={INSECTICIDE_SPRAY_IMAGE}
+                      alt=""
+                      width={56}
+                      height={56}
+                      className="garden-tool-spray-swing object-contain"
+                      unoptimized
+                    />
+                  </div>
+                  {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+                    <span
+                      key={`spray-cloud-${i}`}
+                      className="garden-spray-cloud absolute h-10 w-10 rounded-full bg-red-200/60"
+                      style={{
+                        top: `${28 + (i % 3) * 16}%`,
+                        left: `${22 + (i % 2) * 24 + i * 3}%`,
+                        animationDelay: `${0.08 + i * 0.1}s`,
+                      }}
+                    />
+                  ))}
+                  {[0, 1, 2, 3, 4, 5].map((i) => (
+                    <span
+                      key={`spray-drop-${i}`}
+                      className="garden-spray-drop absolute h-2 w-2 rounded-full bg-red-300/80"
+                      style={{
+                        top: `${36 + (i % 3) * 14}%`,
+                        left: `${26 + (i % 4) * 14}%`,
+                        animationDelay: `${0.2 + i * 0.12}s`,
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
+            {hasBugs && !garden.isBloom && (
+              <p className="rounded-xl bg-amber-100 px-4 py-2 text-center text-sm font-semibold text-amber-900 shadow-sm">
+                植物有蟲害，成長變慢囉！快除蟲～
+              </p>
+            )}
             {!garden.isBloom && (
               <div className="flex flex-wrap justify-center gap-3">
+                {hasBugs && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleSpray}
+                      disabled={animating !== null || (inventory?.insecticide ?? 0) < 1}
+                      title={(inventory?.insecticide ?? 0) < 1 ? "請到商店購買殺蟲劑" : undefined}
+                      className="min-h-[48px] rounded-2xl bg-red-100 px-6 font-bold text-red-800 shadow-sm disabled:opacity-50 hover:bg-red-200 active:scale-[0.98] disabled:cursor-not-allowed"
+                    >
+                      🪲 噴殺蟲劑（× {inventory?.insecticide ?? 0}）
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleBugHand}
+                      disabled={animating !== null || bugHandRemainingMs > 0}
+                      className="min-h-[48px] rounded-2xl bg-amber-100 px-6 font-bold text-amber-800 shadow-sm disabled:opacity-50 hover:bg-amber-200 active:scale-[0.98] disabled:cursor-not-allowed"
+                    >
+                      🐛 徒手抓蟲
+                      {bugHandRemainingMs > 0 && ` · 冷卻 ${formatCooldown(bugHandRemainingMs)}`}
+                    </button>
+                  </>
+                )}
                 {hasWeeds && (
                   <button
                     type="button"

@@ -24,6 +24,7 @@ function getShopItemIcon(item: ShopItem): string {
   if (item.type === "water") return "/garden-assets/gargen_tools/water.png";
   if (item.type === "fertilizer_basic") return "/garden-assets/gargen_tools/normal fertilizer.png";
   if (item.type === "fertilizer_premium") return "/garden-assets/gargen_tools/Advanced_fertilizer.png";
+  if (item.type === "insecticide") return "/garden-assets/gargen_tools/Caterpillar_Spray.png";
   if (item.type === "backpack_expand") return DEFAULT_BACKPACK_IMAGE;
   if (item.type === "tool" && item.toolImagePath) return item.toolImagePath;
   if (item.type === "watering_can" && item.wateringCanImagePath) return item.wateringCanImagePath;
@@ -57,6 +58,7 @@ export default function ShopPage() {
         water: 0,
         fertilizerBasic: 0,
         fertilizerPremium: 0,
+        insecticide: 0,
         seeds: {},
         tools: {},
         wateringCans: {},
@@ -181,7 +183,7 @@ export default function ShopPage() {
               </p>
               <p className="text-sm text-gray-600">
                 水 × {inventory.water} · 一般肥料 × {inventory.fertilizerBasic} ·
-                高級肥料 × {inventory.fertilizerPremium}
+                高級肥料 × {inventory.fertilizerPremium} · 殺蟲劑 × {inventory.insecticide}
                 {Object.entries(inventory.seeds)
                   .filter(([, n]) => n > 0)
                   .map(([id, n]) => {
