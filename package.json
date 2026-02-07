@@ -27,5 +27,8 @@
     "tailwindcss": "^4",
     "ts-jest": "^29.4.6",
     "typescript": "^5"
+  },
+  "optionalDependencies": {
+    "lightningcss-darwin-x64": "^1.30.2"
   }
 }

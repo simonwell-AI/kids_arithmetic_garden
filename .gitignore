@@ -36,11 +36,8 @@ yarn-error.log*
 # vercel
 .vercel
 
-# 部署到 kid_arithmetic_garden 時不包含（僅本專案使用）
-.cursor/
-/scripts/
-/cloudflare/
-/ngrok/
+# 本專案（cursor-ai-jamie-related）可提交 .cursor、scripts、ngrok、cloudflare；
+# 推送到 kids_arithmetic_garden 時，該 repo 的 .gitignore 會屏蔽這些目錄。
 
 # Cloudflare Tunnel 實際設定（含 tunnel ID），範例為 config.example.yml
 /cloudflare/config.yml
