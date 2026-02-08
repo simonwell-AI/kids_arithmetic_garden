@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DrillSettings, type DrillSettingsState } from "@/src/components/DrillSettings";
 import { MixedSpeedQuiz } from "@/src/components/MixedSpeedQuiz";
+import { OperationSpeedQuiz } from "@/src/components/OperationSpeedQuiz";
 import { QuestionCard } from "@/src/components/QuestionCard";
 import { NumericKeypad } from "@/src/components/NumericKeypad";
 import { FeedbackToast } from "@/src/components/FeedbackToast";
@@ -25,7 +26,7 @@ import { playFeedbackSound } from "@/src/lib/sound";
 import { speakText, stopSpeaking } from "@/src/lib/speech";
 import type { AttemptRecord } from "@/src/persistence/db";
 
-type Phase = "menu" | "settings" | "questions" | "end" | "mixedSpeed";
+type Phase = "menu" | "settings" | "questions" | "end" | "mixedSpeed" | "addSpeed" | "subSpeed" | "mulSpeed" | "divSpeed";
 
 export default function DrillPage() {
   const [phase, setPhase] = useState<Phase>("menu");
@@ -245,7 +246,35 @@ export default function DrillPage() {
                 onClick={() => setPhase("mixedSpeed")}
                 className="min-h-[56px] rounded-2xl bg-amber-400 px-6 py-4 text-lg font-bold text-amber-950 shadow transition hover:bg-amber-500 active:scale-[0.98] touch-manipulation"
               >
-                綜合題速度測驗（60 秒）
+                綜合題速度測驗（成功率 80% 給 6 代幣）
+              </button>
+              <button
+                type="button"
+                onClick={() => setPhase("addSpeed")}
+                className="min-h-[56px] rounded-2xl bg-sky-100 px-6 py-4 text-lg font-bold text-sky-900 shadow transition hover:bg-sky-200 active:scale-[0.98] touch-manipulation"
+              >
+                加法速度測驗（成功率 80% 給 1 代幣）
+              </button>
+              <button
+                type="button"
+                onClick={() => setPhase("subSpeed")}
+                className="min-h-[56px] rounded-2xl bg-emerald-100 px-6 py-4 text-lg font-bold text-emerald-900 shadow transition hover:bg-emerald-200 active:scale-[0.98] touch-manipulation"
+              >
+                減法速度測驗（成功率 80% 給 2 代幣）
+              </button>
+              <button
+                type="button"
+                onClick={() => setPhase("mulSpeed")}
+                className="min-h-[56px] rounded-2xl bg-violet-100 px-6 py-4 text-lg font-bold text-violet-900 shadow transition hover:bg-violet-200 active:scale-[0.98] touch-manipulation"
+              >
+                乘法速度測驗（成功率 80% 給 3 代幣）
+              </button>
+              <button
+                type="button"
+                onClick={() => setPhase("divSpeed")}
+                className="min-h-[56px] rounded-2xl bg-rose-100 px-6 py-4 text-lg font-bold text-rose-900 shadow transition hover:bg-rose-200 active:scale-[0.98] touch-manipulation"
+              >
+                除法速度測驗（成功率 80% 給 3 代幣）
               </button>
             </div>
           </div>
@@ -272,6 +301,30 @@ export default function DrillPage() {
               ← 返回選擇
             </button>
             <MixedSpeedQuiz onBack={() => setPhase("menu")} />
+          </>
+        )}
+        {phase === "addSpeed" && (
+          <>
+            <button type="button" onClick={() => setPhase("menu")} className="self-start text-sm font-medium text-gray-600 hover:underline">← 返回選擇</button>
+            <OperationSpeedQuiz operation="add" rewardCoins={1} title="加法速度測驗（60 秒）" subtitle="成功率 80% 給 1 代幣" onBack={() => setPhase("menu")} />
+          </>
+        )}
+        {phase === "subSpeed" && (
+          <>
+            <button type="button" onClick={() => setPhase("menu")} className="self-start text-sm font-medium text-gray-600 hover:underline">← 返回選擇</button>
+            <OperationSpeedQuiz operation="sub" rewardCoins={2} title="減法速度測驗（60 秒）" subtitle="成功率 80% 給 2 代幣" onBack={() => setPhase("menu")} />
+          </>
+        )}
+        {phase === "mulSpeed" && (
+          <>
+            <button type="button" onClick={() => setPhase("menu")} className="self-start text-sm font-medium text-gray-600 hover:underline">← 返回選擇</button>
+            <OperationSpeedQuiz operation="mul" rewardCoins={3} title="乘法速度測驗（60 秒）" subtitle="成功率 80% 給 3 代幣" onBack={() => setPhase("menu")} />
+          </>
+        )}
+        {phase === "divSpeed" && (
+          <>
+            <button type="button" onClick={() => setPhase("menu")} className="self-start text-sm font-medium text-gray-600 hover:underline">← 返回選擇</button>
+            <OperationSpeedQuiz operation="div" rewardCoins={3} title="除法速度測驗（60 秒）" subtitle="成功率 80% 給 3 代幣" onBack={() => setPhase("menu")} />
           </>
         )}
         {phase === "questions" && question && (

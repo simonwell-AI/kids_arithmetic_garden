@@ -5,15 +5,16 @@ import { QuestionCard } from "@/src/components/QuestionCard";
 import { NumericKeypad } from "@/src/components/NumericKeypad";
 import { FeedbackToast } from "@/src/components/FeedbackToast";
 import type { Question } from "@/src/generator";
+import type { Operation } from "@/src/generator";
 import { generateQuestions } from "@/src/generator";
 import { playFeedbackSound } from "@/src/lib/sound";
 import { awardCustomCompletionReward } from "@/src/persistence/wallet";
 
 const DURATION_MS = 60 * 1000;
 
-function buildMixedQuestions(): Question[] {
+function buildOperationQuestions(operation: Operation): Question[] {
   return generateQuestions({
-    operation: "mixed",
+    operation,
     rangeMin: 0,
     rangeMax: 20,
     count: 80,
@@ -21,11 +22,21 @@ function buildMixedQuestions(): Question[] {
   });
 }
 
-export interface MixedSpeedQuizProps {
+export interface OperationSpeedQuizProps {
+  operation: Operation;
+  rewardCoins: number;
+  title: string;
+  subtitle?: string;
   onBack?: () => void;
 }
 
-export function MixedSpeedQuiz({ onBack }: MixedSpeedQuizProps) {
+export function OperationSpeedQuiz({
+  operation,
+  rewardCoins,
+  title,
+  subtitle,
+  onBack,
+}: OperationSpeedQuizProps) {
   const [phase, setPhase] = useState<"idle" | "playing" | "done">("idle");
   const [timeLeftMs, setTimeLeftMs] = useState(DURATION_MS);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -36,7 +47,7 @@ export function MixedSpeedQuiz({ onBack }: MixedSpeedQuizProps) {
   const [lastCorrect, setLastCorrect] = useState(false);
   const [lastTimeMs, setLastTimeMs] = useState(0);
   const [startedAt, setStartedAt] = useState(0);
-  const [rewardCoins, setRewardCoins] = useState<number | null>(null);
+  const [awardedCoins, setAwardedCoins] = useState<number | null>(null);
   const [genError, setGenError] = useState<string | null>(null);
   const hasAwardedRef = useRef(false);
 
@@ -61,15 +72,15 @@ export function MixedSpeedQuiz({ onBack }: MixedSpeedQuizProps) {
     const totalAnswered = index + (showFeedback ? 0 : 1);
     if (totalAnswered < 1) return;
     hasAwardedRef.current = true;
-    awardCustomCompletionReward(correctCount, totalAnswered, 6).then((result) => {
-      if (result.awarded) setRewardCoins(result.amount);
+    awardCustomCompletionReward(correctCount, totalAnswered, rewardCoins).then((result) => {
+      if (result.awarded) setAwardedCoins(result.amount);
     });
-  }, [phase, index, showFeedback, correctCount]);
+  }, [phase, index, showFeedback, correctCount, rewardCoins]);
 
   const handleStart = useCallback(() => {
     setGenError(null);
     try {
-      setQuestions(buildMixedQuestions());
+      setQuestions(buildOperationQuestions(operation));
       setPhase("playing");
       setTimeLeftMs(DURATION_MS);
       setIndex(0);
@@ -77,12 +88,12 @@ export function MixedSpeedQuiz({ onBack }: MixedSpeedQuizProps) {
       setCorrectCount(0);
       setShowFeedback(false);
       setStartedAt(Date.now());
-      setRewardCoins(null);
+      setAwardedCoins(null);
       hasAwardedRef.current = false;
     } catch (e) {
       setGenError(e instanceof Error ? e.message : "題目產生失敗，請再試一次");
     }
-  }, []);
+  }, [operation]);
 
   const handleSubmit = useCallback(async () => {
     if (!question || phase !== "playing") return;
@@ -113,11 +124,11 @@ export function MixedSpeedQuiz({ onBack }: MixedSpeedQuizProps) {
     return (
       <div className="flex flex-col items-center gap-6 rounded-2xl bg-white p-6 shadow-lg sm:p-8">
         <h2 className="text-xl font-bold text-[var(--foreground)] sm:text-2xl">
-          綜合題速度測驗（60 秒）
+          {title}
         </h2>
-        <p className="text-center text-gray-600">
-          60 秒內盡量答對更多加減乘除題，成功率 80% 給 6 代幣
-        </p>
+        {subtitle && (
+          <p className="text-center text-gray-600">{subtitle}</p>
+        )}
         {genError && (
           <p className="rounded-xl bg-rose-100 px-4 py-2 text-center text-sm font-semibold text-rose-800">
             {genError}
@@ -157,9 +168,9 @@ export function MixedSpeedQuiz({ onBack }: MixedSpeedQuizProps) {
           答對 {correctCount} 題
         </p>
         <p className="text-gray-600">正確率 {accuracy}%</p>
-        {rewardCoins != null && rewardCoins > 0 && (
+        {awardedCoins != null && awardedCoins > 0 && (
           <p className="rounded-xl bg-amber-100 px-4 py-2 text-center text-base font-bold text-amber-900">
-            🪙 答對 80% 以上，獲得 {rewardCoins} 代幣！
+            🪙 答對 80% 以上，獲得 {awardedCoins} 代幣！
           </p>
         )}
         <div className="flex flex-wrap items-center justify-center gap-3">

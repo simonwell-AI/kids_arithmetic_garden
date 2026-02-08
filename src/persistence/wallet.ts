@@ -60,6 +60,20 @@ export async function awardCompletionReward(
   return { awarded: true, amount: COMPLETION_REWARD_COINS };
 }
 
+/** 單一運算速度測驗完成且答對率 ≥ 80% 時呼叫；發放指定代幣並回傳 { awarded, amount } */
+export async function awardCustomCompletionReward(
+  correctCount: number,
+  totalCount: number,
+  amount: number
+): Promise<{ awarded: boolean; amount: number }> {
+  if (typeof window === "undefined") return { awarded: false, amount: 0 };
+  if (totalCount < 1 || amount < 1) return { awarded: false, amount: 0 };
+  const rate = correctCount / totalCount;
+  if (rate < COMPLETION_REWARD_THRESHOLD) return { awarded: false, amount: 0 };
+  await addCoins(amount);
+  return { awarded: true, amount };
+}
+
 /** 今日任務完成時呼叫；若今日尚未領過則發放代幣並回傳 { claimed, newCoins, rewardAmount, streakBonus? } */
 export async function claimDailyRewardIfEligible(): Promise<{
   claimed: boolean;
