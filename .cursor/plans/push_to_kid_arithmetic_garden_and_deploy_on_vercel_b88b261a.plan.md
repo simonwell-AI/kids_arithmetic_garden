@@ -1,6 +1,6 @@
 ---
 name: Push to kids_arithmetic_garden and deploy on Render
-overview: 說明 cursor-ai-jamie-related 與 kids_arithmetic_garden 兩目錄的角色，以及將程式推送到 kids_arithmetic_garden 後在 Render 上部署的流程。
+overview: 說明 cursor-ai-jamie-related 與 kids_arithmetic_garden 兩目錄的角色、目前功能與架構，以及將程式推送到 kids_arithmetic_garden 後在 Render 上部署的流程。
 todos: []
 isProject: false
 ---
@@ -15,6 +15,69 @@ isProject: false
 | **cursor-ai-jamie-related** | `/Users/Mac/Documents/SourceTree Project/cursor-ai-jamie-related` | 存放 spec、plans、markdown、規格文件等；**本地部署**與 **ngrok** 在此目錄運行。 |
 | **kids_arithmetic_garden**  | `/Users/Mac/Documents/SourceTree Project/kids_arithmetic_garden`  | 實際部署到 **Render** 的專案；推送到此 repo 的遠端即會觸發 Render 部署。        |
 
+
+---
+
+## 目前功能與架構（截至文檔更新日）
+
+### 技術棧與資料
+
+- **框架**：Next.js（App Router）、React、TypeScript。
+- **儲存**：瀏覽器端 **IndexedDB**（idb），無後端 API；DB 名稱 `kid-arithmetic-db`，版本 3。
+- **Store**：`sessions`、`attempts`、`skillWeights`、`dailyProgress`、`wallet`、`inventory`、`garden`。
+- **花園造訪時間**：`localStorage` 鍵 `garden_last_visit`，用於雜草判定。
+
+### 頁面與路由
+
+
+| 路徑             | 說明                                                                                       |
+| -------------- | ---------------------------------------------------------------------------------------- |
+| `/`            | 首頁：Kids Arithmetic Garden 介紹、代幣顯示、🏪 商店 / 🌱 我的花園 / 📋 今日任務 入口、練習題 / 九九乘法 連結、匯出／匯入 JSON。 |
+| `/drill`       | 練習題：自訂練習、綜合題／加／減／乘／除速度測驗（60 秒，80% 給不同代幣）。                                                |
+| `/garden`      | 我的花園：種植、澆水、施肥、鬆土、噴霧、剪雜草、除蟲（噴殺蟲劑／徒手抓蟲）。                                                   |
+| `/shop`        | 商店：代幣購買種子、水、肥料、殺蟲劑、擴充背包、園藝工具、水壺外觀、背包外觀。                                                  |
+| `/today`       | 今日任務：每日固定題數（20 題），完成可領今日獎勵＋連續 7 天額外代幣。                                                   |
+| `/times-table` | 九九乘法表。                                                                                   |
+
+
+### 代幣與獎勵（wallet）
+
+- **取得代幣**：今日任務完成（6 代幣）、連續 7 天完成（+10）、練習／速度測驗答對率 ≥ 80%（2～6 依模式）。
+- **速度測驗代幣**：綜合題 6、加法 1、減法 2、乘法 3、除法 3（皆 80% 門檻）。
+- **API**：`getCoins`、`addCoins`、`awardCompletionReward`、`awardCustomCompletionReward`、`claimDailyRewardIfEligible`。
+
+### 花園（garden + gardenVisit）
+
+- **成長**：`growthValue` 依時間與澆水／施肥／鬆土／噴霧計算，階段 0～4（開花=4）；雜草或蟲害會乘上懲罰係數。
+- **雜草**：`getHasWeeds()` 依「上次造訪或上次剪草」是否超過 **12 小時**判定；剪完或造訪會更新 `garden_last_visit`，剪雜草有 3 小時冷卻。
+- **蟲害**：進入花園時若 `growthStage >= 1` 且目前無蟲，**15% 機率**觸發蟲害；除蟲方式：噴殺蟲劑（消耗 1）或徒手抓蟲（冷卻 2 小時）。
+- **其他**：鬆土／噴霧冷卻 5 分鐘；商店可買種子、水、肥料、殺蟲劑、工具、水壺與背包外觀。
+
+### 練習與今日任務
+
+- **練習題**：自訂題數與運算類型，可選適應式出題（依 skillWeights）；結束時答對率 ≥ 80% 給 2 代幣。
+- **速度測驗**：MixedSpeedQuiz（綜合）、OperationSpeedQuiz（加／減／乘／除），60 秒、10 題，80% 給對應代幣。
+- **今日任務**：`/today` 固定 20 題（`TODAY_SET_SIZE`），完成後可領每日獎勵；進度與連續天數存於 `dailyProgress`。
+
+### 關鍵檔案（cursor-ai-jamie-related）
+
+
+| 類別        | 路徑                                                                                |
+| --------- | --------------------------------------------------------------------------------- |
+| 花園狀態與操作   | `src/persistence/garden.ts`                                                       |
+| 花園造訪／雜草   | `src/persistence/gardenVisit.ts`                                                  |
+| 代幣        | `src/persistence/wallet.ts`                                                       |
+| 資料庫與型別    | `src/persistence/db.ts`                                                           |
+| 每日進度／連續天數 | `src/persistence/dailyProgress.ts`、`dailyReward.ts`                               |
+| 背包與購買     | `src/persistence/inventory.ts`、`src/shop/catalog.ts`、`purchase.ts`                |
+| 練習題／測驗    | `app/drill/page.tsx`，`src/components/MixedSpeedQuiz.tsx`、`OperationSpeedQuiz.tsx` |
+| 今日任務      | `app/today/page.tsx`，`src/components/TodayTask.tsx`                               |
+| 首頁／layout | `app/page.tsx`，`app/layout.tsx`                                                   |
+
+
+### 同步至 kids_arithmetic_garden
+
+- 功能與架構需與 **kids_arithmetic_garden** 同步；上述路徑在兩專案中對應相同，僅根目錄不同。
 
 ---
 
@@ -125,53 +188,18 @@ sequenceDiagram
 
 ---
 
-## 後續功能：花園蟲害（🐛 破壞植物）
+## 花園蟲害（已實作）
 
-花園進入時有機會出現 🐛 蟲害，會降低植物成長或健康度；玩家需除蟲才能恢復。
+花園進入時有機會出現 🐛 蟲害，會降低植物成長速率；玩家可噴殺蟲劑或徒手抓蟲恢復。
 
-### 設計方向（建議採用）
+### 目前實作
 
+- **觸發**：每次呼叫 `getGarden()` 時，若 `growthStage >= 1` 且目前無蟲，以機率 **15%**（`BUG_PROBABILITY`）設定 `hasBugs = true`。
+- **懲罰**：`getGrowthRate()` 內若 `record.hasBugs`，成長速率乘上 **0.6**（`BUG_PENALTY_MULTIPLIER`）。
+- **除蟲**：噴殺蟲劑（消耗 1，商店購買）或徒手抓蟲（冷卻 **2 小時**）；除蟲後 `hasBugs = false`，並寫入 `lastBugsRemovedAt`（徒手抓蟲冷卻用）。
+- **UI**：有蟲時顯示 🐛 與「植物有蟲害，成長變慢囉！快除蟲～」；除蟲後顯示「蟲蟲趕走了！」。
 
-| 方案             | 說明                                                                    | 改動量          |
-| -------------- | --------------------------------------------------------------------- | ------------ |
-| **A）蟲害當負面狀態**  | 像雜草一樣：有蟲時成長速率乘上懲罰係數（如 0.6），除蟲後恢復。不新增「健康度」欄位。                          | 小，與現有雜草架構一致  |
-| **B）引入健康度**    | `GardenRecord` 新增 `health`（0～100），蟲害會扣健康；健康低時成長變慢，歸零可視為枯萎。澆水／施肥可恢復少許。 | 中，需新欄位與公式    |
-| **C）蟲害直接扣成長值** | 有蟲時，每次進花園依經過時間從 `growthValue` 扣減（下限 0），除蟲後停止扣減。                       | 小，只動成長計算與蟲狀態 |
+### 若未來要調整
 
-
-**建議**：先做 **A**，之後若要「救植物」的明確感再考慮 **B**。
-
-### 蟲害觸發條件（建議）
-
-- **時機**：進入花園時判定（與雜草類似）。
-- **規則**（擇一或組合）：
-  - 超過 N 天沒進花園（例如 1～2 天）則有機率生蟲；或
-  - 每次進花園有機率出現（例如 10%～15%）；或
-  - 僅在 `growthStage >= 1`（已有幼苗）時才可能生蟲。
-
-### 除蟲方式（建議）
-
-- **徒手抓蟲**：按鈕「🐛 抓蟲」+ 冷卻時間（例如 2 小時），不消耗道具，兒童友善。
-- **除蟲劑**（可選）：商店新增加消耗品「除蟲劑」，使用後清除蟲害；可設較短冷卻或無冷卻，作為付費/代幣換取便利。
-
-### 資料與程式要點
-
-- **狀態**：在 `GardenRecord` 或類似 `gardenVisit` 的機制中記錄「是否有蟲」與「上次除蟲時間」（若用冷卻）。若採方案 B，另加 `health` 欄位與 DB 版本升級。
-- **成長計算**：在 `src/persistence/garden.ts` 的 `getGrowthRate()` 中，若 `getHasBugs()` 為 true，再乘上 `BUG_PENALTY_MULTIPLIER`（例如 0.6）。若採方案 B，再依 `health` 調整係數或允許枯萎。
-- **除蟲 API**：新增 `removeBugs()`（或 `catchBugs()`），清除蟲狀態、更新冷卻時間；若有除蟲劑則消耗一枚。
-
-### UI / 體驗要點
-
-- **蟲的表現**：有蟲時在植物或土面旁顯示 1～3 隻 🐛（或小圖），除蟲後消失。
-- **提示**：有蟲時顯示「植物有蟲害，成長變慢囉！快除蟲～」。
-- **除蟲反饋**：按抓蟲或使用除蟲劑後，簡短音效 + 蟲消失，並顯示「蟲蟲趕走了！」。
-
-### 實作檢查清單（蟲害功能）
-
-- 決定採用方案 A / B / C，以及觸發條件（天數／機率／成長階段）。
-- 在 `GardenRecord` 或 gardenVisit 邏輯中新增蟲狀態與（可選）`health`。
-- `getGrowthRate()` 加入蟲害懲罰；若為 B，加入健康度對成長或枯萎的影響。
-- 新增 `removeBugs()`（及可選除蟲劑消耗），並在花園頁面加入「抓蟲」按鈕與冷卻顯示。
-- 花園頁面有蟲時顯示 🐛 與提示文案，除蟲後隱藏並顯示成功訊息。
-- （可選）商店新增除蟲劑品項與購買／使用流程。
+- 可改為「超過 N 天沒進花園才有機率生蟲」或調整機率／冷卻時間；資料與 API（`sprayInsecticide`、`removeBugsByHand`）已就緒。
 
