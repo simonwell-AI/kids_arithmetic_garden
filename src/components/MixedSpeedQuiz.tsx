@@ -16,7 +16,7 @@ function buildMixedQuestions(): Question[] {
     operation: "mixed",
     rangeMin: 0,
     rangeMax: 20,
-    count: 80,
+    count: 10,
     difficulty: "normal",
   });
 }

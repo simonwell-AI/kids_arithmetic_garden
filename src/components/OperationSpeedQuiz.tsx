@@ -12,12 +12,14 @@ import { awardCustomCompletionReward } from "@/src/persistence/wallet";
 
 const DURATION_MS = 60 * 1000;
 
+const SPEED_QUIZ_QUESTION_COUNT = 10;
+
 function buildOperationQuestions(operation: Operation): Question[] {
   return generateQuestions({
     operation,
     rangeMin: 0,
     rangeMax: 20,
-    count: 80,
+    count: SPEED_QUIZ_QUESTION_COUNT,
     difficulty: "normal",
   });
 }
@@ -79,21 +81,30 @@ export function OperationSpeedQuiz({
 
   const handleStart = useCallback(() => {
     setGenError(null);
-    try {
-      setQuestions(buildOperationQuestions(operation));
-      setPhase("playing");
-      setTimeLeftMs(DURATION_MS);
-      setIndex(0);
-      setValue("");
-      setCorrectCount(0);
-      setShowFeedback(false);
-      setStartedAt(Date.now());
-      setAwardedCoins(null);
-      hasAwardedRef.current = false;
-    } catch (e) {
-      setGenError(e instanceof Error ? e.message : "題目產生失敗，請再試一次");
-    }
-  }, [operation]);
+    setPhase("playing");
+    setTimeLeftMs(DURATION_MS);
+    setIndex(0);
+    setValue("");
+    setCorrectCount(0);
+    setShowFeedback(false);
+    setStartedAt(Date.now());
+    setAwardedCoins(null);
+    hasAwardedRef.current = false;
+    setQuestions([]);
+  }, []);
+
+  useEffect(() => {
+    if (phase !== "playing" || questions.length > 0) return;
+    const t = setTimeout(() => {
+      try {
+        setQuestions(buildOperationQuestions(operation));
+      } catch (e) {
+        setGenError(e instanceof Error ? e.message : "題目產生失敗，請再試一次");
+        setPhase("idle");
+      }
+    }, 0);
+    return () => clearTimeout(t);
+  }, [phase, questions.length, operation]);
 
   const handleSubmit = useCallback(async () => {
     if (!question || phase !== "playing") return;
