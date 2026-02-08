@@ -80,16 +80,16 @@ export default function Home() {
             適合 國小低年級到中年級 的孩子使用，也很適合家長在家陪孩子一起練習數學。
           </p>
         </section>
-        <div className="flex w-full max-w-md items-center justify-center gap-4 sm:max-w-lg">
-          <span className="flex min-w-0 items-center gap-2 rounded-xl border-2 border-amber-200 bg-amber-50 px-4 py-2 font-bold text-amber-800 shadow-sm">
-            <Image src={COIN_IMAGE} alt="" width={24} height={24} className="shrink-0 object-contain animate-coin-pulse" unoptimized />
-            <span className="shrink-0">代幣：</span>
-            <span className="min-w-[1.5rem] shrink-0 text-right tabular-nums">{coins ?? 0}</span>
+        <div className="grid w-full max-w-md grid-cols-3 gap-2 sm:max-w-lg sm:gap-4">
+          <span className="flex min-w-0 items-center justify-center gap-1 rounded-xl border-2 border-amber-200 bg-amber-50 px-2 py-2 font-bold text-amber-800 shadow-sm sm:gap-2 sm:px-4">
+            <Image src={COIN_IMAGE} alt="" width={24} height={24} className="h-5 w-5 shrink-0 object-contain animate-coin-pulse sm:h-6 sm:w-6" unoptimized />
+            <span className="truncate text-sm sm:text-base">代幣：</span>
+            <span className="min-w-[1.25rem] shrink-0 text-right text-sm tabular-nums sm:text-base">{coins ?? 0}</span>
           </span>
-          <Link href="/shop" className="flex items-center gap-1.5 rounded-xl border-2 border-[var(--primary)] bg-white px-4 py-2 font-semibold text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white">
+          <Link href="/shop" className="flex min-w-0 items-center justify-center rounded-xl border-2 border-[var(--primary)] bg-white px-2 py-2 text-center font-semibold text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white sm:px-4 sm:py-2">
             🏪 商店
           </Link>
-          <Link href="/garden" className="flex items-center gap-1.5 rounded-xl border-2 border-green-300 bg-white px-4 py-2 font-semibold text-green-700 hover:bg-green-100">
+          <Link href="/garden" className="flex min-w-0 items-center justify-center rounded-xl border-2 border-green-300 bg-white px-2 py-2 text-center font-semibold text-green-700 hover:bg-green-100 sm:px-4 sm:py-2">
             🌱 我的花園
           </Link>
         </div>
