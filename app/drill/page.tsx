@@ -267,7 +267,7 @@ export default function DrillPage() {
                 onClick={() => setPhase("mulSpeed")}
                 className="min-h-[56px] rounded-2xl bg-violet-100 px-6 py-4 text-lg font-bold text-violet-900 shadow transition hover:bg-violet-200 active:scale-[0.98] touch-manipulation"
               >
-                乘法速度測驗（成功率 80% 給 3 代幣）
+                乘法速度測驗（成功率 80% 給 2 代幣）
               </button>
               <button
                 type="button"
@@ -318,7 +318,7 @@ export default function DrillPage() {
         {phase === "mulSpeed" && (
           <>
             <button type="button" onClick={() => setPhase("menu")} className="self-start text-sm font-medium text-gray-600 hover:underline">← 返回選擇</button>
-            <OperationSpeedQuiz operation="mul" rewardCoins={3} title="乘法速度測驗（60 秒）" subtitle="成功率 80% 給 3 代幣" onBack={() => setPhase("menu")} />
+            <OperationSpeedQuiz operation="mul" rewardCoins={2} title="乘法速度測驗（60 秒）" subtitle="成功率 80% 給 2 代幣" onBack={() => setPhase("menu")} />
           </>
         )}
         {phase === "divSpeed" && (
