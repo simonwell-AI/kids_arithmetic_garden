@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   getGarden,
   plantSeed,
@@ -15,13 +15,21 @@ import {
   repotPlant,
   applyPottingSoil,
   removeBugsWithSpray,
-  removeBugsWithHand,
 } from "@/src/persistence/garden";
 import { getInventoryState } from "@/src/persistence/inventory";
 import { getHasWeeds, setLastGardenVisit } from "@/src/persistence/gardenVisit";
+import {
+  getAchievements,
+  recordGardenVisit,
+  unlockFirstBloom,
+  incrementBugsRemoved,
+  incrementWeedsTrimmed,
+  type AchievementState,
+} from "@/src/persistence/achievements";
 import { getSeedGrowthImagePath, SEED_NAMES } from "@/src/garden/assets";
 import { SHOP_CATALOG } from "@/src/shop/catalog";
-import { unlockAudio, playWaterSound, playSpraySound, playSoilSound, playSparkleSound, playScissorSound, getScissorSoundDurationMs, getSpraySoundDurationMs, getSoilSoundDurationMs } from "@/src/lib/sound";
+import { unlockAudio, playWaterSound, playSpraySound, playSoilSound, playSparkleSound, playScissorSound, playCelebrationSound, getScissorSoundDurationMs, getSpraySoundDurationMs, getSoilSoundDurationMs } from "@/src/lib/sound";
+import { CelebrationParticles } from "@/src/components/CelebrationParticles";
 
 type GardenAnimating = "water" | "fertilize" | "weed" | "fork" | "mist" | "soil" | "spray" | null;
 
@@ -44,8 +52,6 @@ const FORK_COOLDOWN_MS = 5 * 60 * 1000;
 const MIST_COOLDOWN_MS = 5 * 60 * 1000;
 /** 修剪雜草冷卻時間（與 garden.ts 一致：3 小時） */
 const WEED_COOLDOWN_MS = 3 * 60 * 60 * 1000;
-/** 徒手抓蟲冷卻時間（與 garden.ts 一致：2 小時） */
-const BUG_HAND_COOLDOWN_MS = 2 * 60 * 60 * 1000;
 /** 噴殺蟲劑動畫時長 */
 const SPRAY_ANIMATION_DURATION_MS = 2400;
 /** 商店消耗品圖示（與商店顯示一致） */
@@ -105,6 +111,11 @@ export default function GardenPage() {
   const [mistAnimationDurationMs, setMistAnimationDurationMs] = useState(1400);
   /** 鬆土動畫時長（依音效長度動態設定，園藝叉搖擺至音效結束） */
   const [forkAnimationDurationMs, setForkAnimationDurationMs] = useState(1200);
+  /** 開花／收成慶祝粒子顯示 */
+  const [showCelebration, setShowCelebration] = useState(false);
+  /** 上一筆成長階段，用於偵測「剛開花」 */
+  const prevStageRef = useRef<number | null>(null);
+  const [achievements, setAchievements] = useState<AchievementState | null>(null);
 
   const wateringCanImagePath = useMemo(
     () => getWateringCanImagePath(inventory?.wateringCans),
@@ -113,11 +124,25 @@ export default function GardenPage() {
 
   const load = useCallback(async () => {
     try {
-      const [g, inv] = await Promise.all([getGarden(), getInventoryState()]);
+      const visitResult = await recordGardenVisit();
+      if (visitResult.justUnlocked && visitResult.coinsAwarded > 0) {
+        showMessage(`成就解鎖：連續 7 天進花園！獲得 ${visitResult.coinsAwarded} 代幣`);
+      }
+      const [g, inv, ach] = await Promise.all([getGarden(), getInventoryState(), getAchievements()]);
+      setAchievements(ach);
+      const prevStage = prevStageRef.current;
+      const newStage = g?.growthStage ?? null;
+      prevStageRef.current = newStage;
+      if (prevStage !== null && prevStage < 4 && newStage !== null && newStage >= 4) {
+        playCelebrationSound();
+        setShowCelebration(true);
+        setTimeout(() => setShowCelebration(false), 3000);
+      }
       setGarden(g);
       setInventory(inv);
       setHasWeeds(getHasWeeds());
     } catch {
+      prevStageRef.current = null;
       setGarden(null);
       setInventory(null);
     }
@@ -134,9 +159,8 @@ export default function GardenPage() {
       const hasForkCooldown = garden.lastForkedAt != null && current - garden.lastForkedAt < FORK_COOLDOWN_MS;
       const hasMistCooldown = garden.lastMistedAt != null && current - garden.lastMistedAt < MIST_COOLDOWN_MS;
       const hasWeedCooldown = garden.lastTrimmedAt != null && current - garden.lastTrimmedAt < WEED_COOLDOWN_MS;
-      const hasBugHandCooldown = garden.lastBugsRemovedAt != null && current - garden.lastBugsRemovedAt < BUG_HAND_COOLDOWN_MS;
       setNow(current);
-      if (!hasForkCooldown && !hasMistCooldown && !hasWeedCooldown && !hasBugHandCooldown) {
+      if (!hasForkCooldown && !hasMistCooldown && !hasWeedCooldown) {
         clearInterval(t);
       }
     }, 1000);
@@ -219,18 +243,26 @@ export default function GardenPage() {
     unlockAudio();
     const result = await trimWeeds();
     if (result.success) {
+      const weedAch = await incrementWeedsTrimmed();
+      if (weedAch.justUnlocked && weedAch.coinsAwarded > 0) {
+        showMessage(`成就解鎖：剪雜草 3 次！獲得 ${weedAch.coinsAwarded} 代幣。雜草修剪完成～`);
+      } else {
+        showMessage("雜草修剪完成～ 成長 +0.1");
+      }
       setHasWeeds(false);
       const soundMs = await getScissorSoundDurationMs();
       const totalMs = Math.max(WEED_ANIMATION_MIN_MS, WEED_SNIP_SOUND_DELAY_MS + soundMs);
       setWeedAnimationDurationMs(totalMs);
       setAnimating("weed");
-      showMessage("雜草修剪完成～ 成長 +0.1");
       setTimeout(() => playScissorSound(), WEED_SNIP_SOUND_DELAY_MS);
-      setTimeout(() => setAnimating(null), totalMs);
+      setTimeout(() => {
+        setAnimating(null);
+        load();
+      }, totalMs);
     } else {
       showMessage(result.message ?? "除草失敗");
     }
-  }, []);
+  }, [load]);
 
   const handleFork = useCallback(async () => {
     unlockAudio();
@@ -302,25 +334,20 @@ export default function GardenPage() {
     unlockAudio();
     const result = await removeBugsWithSpray();
     if (result.success) {
+      const bugAch = await incrementBugsRemoved();
+      if (bugAch.justUnlocked && bugAch.coinsAwarded > 0) {
+        showMessage(`成就解鎖：除蟲 5 次！獲得 ${bugAch.coinsAwarded} 代幣。蟲蟲趕走了！`);
+      } else {
+        showMessage("蟲蟲趕走了！");
+      }
       setAnimating("spray");
       const soundMs = await playSpraySound();
-      showMessage("蟲蟲趕走了！");
       setTimeout(() => {
         setAnimating(null);
         load();
       }, Math.max(SPRAY_ANIMATION_DURATION_MS, soundMs || 0));
     } else {
       showMessage(result.message ?? "除蟲失敗");
-    }
-  }, [load]);
-
-  const handleBugHand = useCallback(async () => {
-    const result = await removeBugsWithHand();
-    if (result.success) {
-      showMessage("蟲蟲趕走了！");
-      load();
-    } else {
-      showMessage(result.message ?? "抓蟲失敗");
     }
   }, [load]);
 
@@ -333,22 +360,33 @@ export default function GardenPage() {
   const weedRemainingMs = garden?.lastTrimmedAt
     ? Math.max(0, WEED_COOLDOWN_MS - (now - garden.lastTrimmedAt))
     : 0;
-  const bugHandRemainingMs = garden?.lastBugsRemovedAt
-    ? Math.max(0, BUG_HAND_COOLDOWN_MS - (now - garden.lastBugsRemovedAt))
-    : 0;
   const hasBugs = garden?.hasBugs ?? false;
   const showBugs = hasBugs;
 
   const handleHarvest = useCallback(async () => {
+    unlockAudio();
     const result = await harvest();
     if (result.success) {
-      showMessage("收成完成，可以再種新種子～");
+      if (result.coinsAwarded != null) {
+        const bloomAch = await unlockFirstBloom();
+        if (bloomAch.justUnlocked && bloomAch.coinsAwarded > 0) {
+          showMessage(`成就解鎖：第一次開花！獲得 ${bloomAch.coinsAwarded} 代幣。收成獲得 ${result.coinsAwarded} 代幣～`);
+        } else {
+          showMessage(`獲得 ${result.coinsAwarded} 代幣！收成完成，可以再種新種子～`);
+        }
+      } else {
+        showMessage("收成完成，可以再種新種子～");
+      }
+      playCelebrationSound();
+      setShowCelebration(true);
+      setTimeout(() => setShowCelebration(false), 3000);
       load();
     }
   }, [load]);
 
   return (
     <div className="flex min-h-[100dvh] flex-col items-center bg-[var(--background)] px-4 py-8 sm:px-6 sm:py-10">
+      {showCelebration && <CelebrationParticles />}
       <div className="flex w-full max-w-lg flex-col gap-6">
         <Link href="/" className="font-semibold text-[var(--primary)] hover:underline">
           ← 返回首頁
@@ -360,6 +398,70 @@ export default function GardenPage() {
           <p className="rounded-xl bg-amber-100 px-4 py-2 text-center font-semibold text-amber-900 shadow-sm" role="status">
             {message}
           </p>
+        )}
+        {achievements && (
+          <div className="w-full rounded-2xl border border-amber-200 bg-amber-50/80 p-3 sm:p-4">
+            <h2 className="mb-2 text-center text-sm font-bold text-amber-900 sm:text-base">🏅 成就徽章</h2>
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              <div
+                className={`rounded-xl border-2 px-3 py-2 text-center text-xs sm:text-sm ${
+                  achievements.firstBloomUnlocked
+                    ? "border-amber-400 bg-amber-100 text-amber-900"
+                    : "border-gray-200 bg-white/60 text-gray-500"
+                }`}
+                title="第一次開花：收成開花株"
+              >
+                <span className="font-semibold">🌸 第一次開花</span>
+                {achievements.firstBloomUnlocked && <span className="ml-1">✓</span>}
+              </div>
+              <div
+                className={`rounded-xl border-2 px-3 py-2 text-center text-xs sm:text-sm ${
+                  achievements.gardenStreak7Unlocked
+                    ? "border-amber-400 bg-amber-100 text-amber-900"
+                    : "border-gray-200 bg-white/60 text-gray-500"
+                }`}
+                title="連續 7 天進花園"
+              >
+                <span className="font-semibold">📅 連續 7 天進花園</span>
+                {achievements.gardenStreak7Unlocked ? (
+                  <span className="ml-1">✓</span>
+                ) : (
+                  <span className="block text-xs">({achievements.gardenConsecutiveDays}/7 天)</span>
+                )}
+              </div>
+              <div
+                className={`rounded-xl border-2 px-3 py-2 text-center text-xs sm:text-sm ${
+                  achievements.bugsRemoved5Unlocked
+                    ? "border-amber-400 bg-amber-100 text-amber-900"
+                    : "border-gray-200 bg-white/60 text-gray-500"
+                }`}
+                title="除蟲 5 次"
+              >
+                <span className="font-semibold">🐛 除蟲 5 次</span>
+                {achievements.bugsRemoved5Unlocked ? (
+                  <span className="ml-1">✓</span>
+                ) : (
+                  <span className="block text-xs">({achievements.bugsRemovedCount}/5)</span>
+                )}
+              </div>
+              <div
+                className={`rounded-xl border-2 px-3 py-2 text-center text-xs sm:text-sm ${
+                  achievements.weedsTrimmed3Unlocked
+                    ? "border-amber-400 bg-amber-100 text-amber-900"
+                    : "border-gray-200 bg-white/60 text-gray-500"
+                }`}
+                title="剪雜草 3 次"
+              >
+                <span className="font-semibold">✂️ 剪雜草 3 次</span>
+                {achievements.weedsTrimmed3Unlocked ? (
+                  <span className="ml-1">✓</span>
+                ) : (
+                  <span className="block text-xs">({achievements.weedsTrimmedCount}/3)</span>
+                )}
+              </div>
+            </div>
+            <p className="mt-2 text-center text-xs text-amber-800">解鎖成就可獲得 2 代幣</p>
+          </div>
         )}
         {!garden && (
           <div className="flex flex-col items-center gap-5 rounded-3xl border-2 border-green-200 bg-white/90 p-6 shadow-lg">
@@ -799,15 +901,6 @@ export default function GardenPage() {
                       className="min-h-[48px] rounded-2xl bg-red-100 px-6 font-bold text-red-800 shadow-sm disabled:opacity-50 hover:bg-red-200 active:scale-[0.98] disabled:cursor-not-allowed"
                     >
                       🐛 噴殺蟲劑（× {inventory?.insecticide ?? 0}）
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleBugHand}
-                      disabled={animating !== null || bugHandRemainingMs > 0}
-                      className="min-h-[48px] rounded-2xl bg-amber-100 px-6 font-bold text-amber-800 shadow-sm disabled:opacity-50 hover:bg-amber-200 active:scale-[0.98] disabled:cursor-not-allowed"
-                    >
-                      🐛 徒手抓蟲
-                      {bugHandRemainingMs > 0 && ` · 冷卻 ${formatCooldown(bugHandRemainingMs)}`}
                     </button>
                   </>
                 )}

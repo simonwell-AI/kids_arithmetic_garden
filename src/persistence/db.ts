@@ -1,7 +1,7 @@
 import { openDB } from "idb";
 
 const DB_NAME = "kid-arithmetic-db";
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 export const STORE_SESSIONS = "sessions";
 export const STORE_ATTEMPTS = "attempts";
@@ -10,10 +10,12 @@ export const STORE_DAILY_PROGRESS = "dailyProgress";
 export const STORE_WALLET = "wallet";
 export const STORE_INVENTORY = "inventory";
 export const STORE_GARDEN = "garden";
+export const STORE_ACHIEVEMENTS = "achievements";
 
 export const WALLET_KEY = "default";
 export const INVENTORY_KEY = "default";
 export const GARDEN_KEY = "default";
+export const ACHIEVEMENTS_KEY = "default";
 
 export interface SessionRecord {
   id: string;
@@ -88,6 +90,28 @@ export interface GardenRecord {
   lastBugsRemovedAt?: number;
 }
 
+export interface AchievementRecord {
+  id: string;
+  /** 第一次開花（收成開花株） */
+  firstBloomUnlocked: boolean;
+  firstBloomUnlockedAt?: number;
+  /** 連續 7 天進花園 */
+  gardenStreak7Unlocked: boolean;
+  gardenStreak7UnlockedAt?: number;
+  lastGardenVisitDate: string;
+  gardenConsecutiveDays: number;
+  /** 除蟲次數累計 */
+  bugsRemovedCount: number;
+  /** 除蟲 5 次 */
+  bugsRemoved5Unlocked: boolean;
+  bugsRemoved5UnlockedAt?: number;
+  /** 剪雜草次數累計 */
+  weedsTrimmedCount: number;
+  /** 剪雜草 3 次 */
+  weedsTrimmed3Unlocked: boolean;
+  weedsTrimmed3UnlockedAt?: number;
+}
+
 let dbPromise: ReturnType<typeof openDB> | null = null;
 
 export function getDB() {
@@ -117,6 +141,11 @@ export function getDB() {
           }
           if (!db.objectStoreNames.contains(STORE_GARDEN)) {
             db.createObjectStore(STORE_GARDEN, { keyPath: "id" });
+          }
+        }
+        if (oldVersion < 4) {
+          if (!db.objectStoreNames.contains(STORE_ACHIEVEMENTS)) {
+            db.createObjectStore(STORE_ACHIEVEMENTS, { keyPath: "id" });
           }
         }
       },

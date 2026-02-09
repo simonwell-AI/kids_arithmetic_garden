@@ -92,11 +92,15 @@ export default function TodayTaskPage() {
       setTimeout(() => setShowCelebration(false), 3000);
     }
     if (reward?.claimed && reward.rewardAmount > 0) {
-      const msg =
+      const coinMsg =
         reward.streakBonus > 0
           ? `今日任務完成！獲得 ${reward.rewardAmount} 代幣！（含連續 7 天獎勵 +${reward.streakBonus}）`
           : `今日任務完成！獲得 ${reward.rewardAmount} 代幣！`;
-      setRewardMessage(msg);
+      const fertilizerMsg = reward.fertilizerAwarded ? `，以及一般肥料 ×${reward.fertilizerAwarded}` : "";
+      setRewardMessage(coinMsg + fertilizerMsg);
+      setTimeout(() => setRewardMessage(null), 4000);
+    } else if (reward?.fertilizerAwarded) {
+      setRewardMessage(`今日任務完成！獲得一般肥料 ×${reward.fertilizerAwarded}`);
       setTimeout(() => setRewardMessage(null), 4000);
     }
   }, [question, value, phase, startedAt]);

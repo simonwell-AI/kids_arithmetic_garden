@@ -8,8 +8,11 @@ import {
   hasTool,
 } from "./inventory";
 import { getHasWeeds, setLastGardenVisit } from "./gardenVisit";
+import { addCoins } from "./wallet";
 
 const MAX_GROWTH_STAGE = 4; // 0..4, 4 = 開花
+/** 開花後收成發放的代幣 */
+const HARVEST_BLOOM_COINS = 8;
 const GROWTH_PER_DAY_WATER = 0.2;
 const GROWTH_PER_DAY_FERTILIZER_BASIC = 0.3;
 const GROWTH_PER_DAY_FERTILIZER_PREMIUM = 0.5;
@@ -26,8 +29,6 @@ const MIST_COOLDOWN_MS = 5 * 60 * 1000;
 const WEED_COOLDOWN_MS = 3 * 60 * 60 * 1000;
 /** 蟲害時成長速率懲罰係數 */
 const BUG_PENALTY_MULTIPLIER = 0.6;
-/** 徒手抓蟲冷卻時間（2 小時） */
-const BUG_HAND_COOLDOWN_MS = 2 * 60 * 60 * 1000;
 /** 進入花園時有蟲害的機率（僅在幼苗以上且目前無蟲時判定） */
 const BUG_PROBABILITY = 0.15;
 const FORK_GROWTH_BONUS = 0.12;
@@ -106,7 +107,6 @@ export async function getGarden(): Promise<{
   trowelUsed?: boolean;
   lastTrimmedAt?: number;
   hasBugs?: boolean;
-  lastBugsRemovedAt?: number;
 } | null> {
   if (typeof window === "undefined") return null;
   const record = await getGardenRecord();
@@ -133,7 +133,6 @@ export async function getGarden(): Promise<{
     trowelUsed: record.trowelUsed,
     lastTrimmedAt: record.lastTrimmedAt,
     hasBugs: record.hasBugs ?? false,
-    lastBugsRemovedAt: record.lastBugsRemovedAt,
   };
 }
 
@@ -189,12 +188,21 @@ export async function fertilize(type: "basic" | "premium"): Promise<{ success: b
   return { success: true };
 }
 
-/** 收成：清空花園，可再種新種子 */
-export async function harvest(): Promise<{ success: boolean; message?: string }> {
+/** 收成：清空花園，可再種新種子；若已開花則發放代幣 */
+export async function harvest(): Promise<{ success: boolean; message?: string; coinsAwarded?: number }> {
   if (typeof window === "undefined") return { success: false, message: "僅支援瀏覽器" };
+  const record = await getGardenRecord();
+  if (!record) return { success: false, message: "尚未種植" };
+  const value = computeGrowthValue(record);
+  const stage = growthValueToStage(value);
+  let coinsAwarded: number | undefined;
+  if (stage >= MAX_GROWTH_STAGE) {
+    await addCoins(HARVEST_BLOOM_COINS);
+    coinsAwarded = HARVEST_BLOOM_COINS;
+  }
   const db = await getDB();
   await db.delete(STORE_GARDEN, GARDEN_KEY);
-  return { success: true };
+  return { success: true, coinsAwarded };
 }
 
 /** 修剪雜草：需要園藝剪刀，清除雜草並給少量成長；每 3 小時可剪一次 */
@@ -297,20 +305,3 @@ export async function removeBugsWithSpray(): Promise<{ success: boolean; message
   return { success: true };
 }
 
-/** 徒手抓蟲：無消耗，冷卻 2 小時 */
-export async function removeBugsWithHand(): Promise<{ success: boolean; message?: string }> {
-  if (typeof window === "undefined") return { success: false, message: "僅支援瀏覽器" };
-  const record = await getGardenRecord();
-  if (!record) return { success: false, message: "尚未種植" };
-  if (!record.hasBugs) return { success: false, message: "目前沒有蟲害" };
-  const now = Date.now();
-  if (record.lastBugsRemovedAt != null && now - record.lastBugsRemovedAt < BUG_HAND_COOLDOWN_MS) {
-    return { success: false, message: "需再等一段時間才能再抓蟲" };
-  }
-  record.growthValue = computeGrowthValue(record);
-  record.hasBugs = false;
-  record.lastBugsRemovedAt = now;
-  await saveGarden(record);
-  setLastGardenVisit();
-  return { success: true };
-}
