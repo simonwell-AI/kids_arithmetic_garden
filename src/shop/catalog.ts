@@ -33,6 +33,7 @@ export interface ShopItem {
 export const SHOP_CATALOG: ShopItem[] = [
   { id: "seed_pink_flower", type: "seed", name: "粉紅花種子", price: 15, seedId: "pink_flower" },
   { id: "seed_sun_flower", type: "seed", name: "向日葵種子", price: 15, seedId: "sun_flower" },
+  { id: "seed_tomato", type: "seed", name: "番茄種子", price: 15, seedId: "tomato" },
   { id: "water", type: "water", name: "水", price: 1 },
   { id: "fertilizer_basic", type: "fertilizer_basic", name: "一般肥料", price: 5 },
   { id: "fertilizer_premium", type: "fertilizer_premium", name: "高級肥料", price: 12 },

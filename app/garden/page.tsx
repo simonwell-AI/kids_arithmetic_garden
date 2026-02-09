@@ -491,7 +491,7 @@ export default function GardenPage() {
               </div>
             ) : (
               <div className="flex flex-wrap justify-center gap-4">
-                {["pink_flower", "sun_flower"].map((seedId) => (
+                {["pink_flower", "sun_flower", "tomato"].map((seedId) => (
                   <button
                     key={seedId}
                     type="button"
