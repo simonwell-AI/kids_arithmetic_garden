@@ -34,6 +34,7 @@ async function getAchievementRecord(): Promise<AchievementRecord> {
     bugsRemoved5Unlocked: false,
     weedsTrimmedCount: 0,
     weedsTrimmed3Unlocked: false,
+    plantedSeedIds: [],
   };
   await db.put(STORE_ACHIEVEMENTS, defaultRecord);
   return defaultRecord;
@@ -160,4 +161,22 @@ export async function incrementWeedsTrimmed(): Promise<{ justUnlocked: boolean; 
   }
   await saveAchievements(r);
   return { justUnlocked, coinsAwarded };
+}
+
+/** 取得曾種過的種子 ID 列表（商店用於不販賣已種過的種子） */
+export async function getPlantedSeedIds(): Promise<string[]> {
+  if (typeof window === "undefined") return [];
+  const r = await getAchievementRecord();
+  return r.plantedSeedIds ?? [];
+}
+
+/** 記錄曾種過此種子（種植成功時呼叫） */
+export async function addPlantedSeedId(seedId: string): Promise<void> {
+  if (typeof window === "undefined") return;
+  const r = await getAchievementRecord();
+  if (!r.plantedSeedIds) r.plantedSeedIds = [];
+  if (!r.plantedSeedIds.includes(seedId)) {
+    r.plantedSeedIds.push(seedId);
+    await saveAchievements(r);
+  }
 }

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getCoins, addCoins } from "@/src/persistence";
+import { getCoins, addCoins, getPlantedSeedIds } from "@/src/persistence";
 import { SHOP_CATALOG, SHOP_CATEGORIES, DEFAULT_BACKPACK_IMAGE } from "@/src/shop/catalog";
 import { purchaseItem, getInventoryCounts, TOOL_DISPLAY_NAMES, WATERING_CAN_DISPLAY_NAMES, BACKPACK_DISPLAY_NAMES } from "@/src/shop/purchase";
 import { setSelectedBackpack } from "@/src/persistence/inventory";
@@ -42,6 +42,7 @@ function getItemsByCategory(catalog: ShopItem[]) {
 export default function ShopPage() {
   const [coins, setCoins] = useState<number | null>(null);
   const [inventory, setInventory] = useState<Awaited<ReturnType<typeof getInventoryCounts>> | null>(null);
+  const [plantedSeedIds, setPlantedSeedIds] = useState<string[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [messageType, setMessageType] = useState<"success" | "error" | null>(null);
   const [coinNumberPop, setCoinNumberPop] = useState(false);
@@ -49,9 +50,10 @@ export default function ShopPage() {
 
   const load = useCallback(async () => {
     try {
-      const [c, inv] = await Promise.all([getCoins(), getInventoryCounts()]);
+      const [c, inv, planted] = await Promise.all([getCoins(), getInventoryCounts(), getPlantedSeedIds()]);
       setCoins(c);
       setInventory(inv);
+      setPlantedSeedIds(planted);
     } catch {
       setCoins(0);
       setInventory({
@@ -106,6 +108,11 @@ export default function ShopPage() {
   );
 
   const backpackFull = inventory != null && inventory.used >= inventory.capacity;
+
+  /** 已種過的種子不再販賣 */
+  const shopCatalog = SHOP_CATALOG.filter(
+    (item) => item.type !== "seed" || (item.seedId != null && !plantedSeedIds.includes(item.seedId))
+  );
 
   const handleTestAddCoins = useCallback(async () => {
     await addCoins(100);
@@ -224,7 +231,7 @@ export default function ShopPage() {
           </div>
         )}
         <div className="flex flex-col gap-8">
-          {getItemsByCategory(SHOP_CATALOG).map(({ key, label, items }) => (
+          {getItemsByCategory(shopCatalog).map(({ key, label, items }) => (
             <section key={key} className="flex flex-col gap-3">
               <h2 className="border-b-2 border-[var(--primary)] pb-1.5 text-lg font-bold text-[var(--foreground)]">
                 {label}

@@ -9,6 +9,7 @@ import {
 } from "./inventory";
 import { getHasWeeds, setLastGardenVisit } from "./gardenVisit";
 import { addCoins } from "./wallet";
+import { addPlantedSeedId } from "./achievements";
 
 const MAX_GROWTH_STAGE = 4; // 0..4, 4 = 開花
 /** 開花後收成發放的代幣 */
@@ -31,6 +32,8 @@ const WEED_COOLDOWN_MS = 3 * 60 * 60 * 1000;
 const BUG_PENALTY_MULTIPLIER = 0.6;
 /** 進入花園時有蟲害的機率（僅在幼苗以上且目前無蟲時判定） */
 const BUG_PROBABILITY = 0.15;
+/** 除蟲後多久內不再觸發蟲害（10 分鐘） */
+const BUG_RESPAWN_COOLDOWN_MS = 10 * 60 * 1000;
 const FORK_GROWTH_BONUS = 0.12;
 const MIST_GROWTH_BONUS = 0.05;
 const TROWEL_GROWTH_BONUS = 0.5;
@@ -113,7 +116,15 @@ export async function getGarden(): Promise<{
   if (!record) return null;
   const value = computeGrowthValue(record);
   const growthStage = growthValueToStage(value);
-  if (growthStage >= 1 && !record.hasBugs && Math.random() < BUG_PROBABILITY) {
+  const now = Date.now();
+  const pastBugRespawnCooldown =
+    record.lastBugsRemovedAt == null || now - record.lastBugsRemovedAt > BUG_RESPAWN_COOLDOWN_MS;
+  if (
+    growthStage >= 1 &&
+    !record.hasBugs &&
+    pastBugRespawnCooldown &&
+    Math.random() < BUG_PROBABILITY
+  ) {
     record.hasBugs = true;
     await saveGarden(record);
   }
@@ -150,6 +161,7 @@ export async function plantSeed(seedId: string): Promise<{ success: boolean; mes
     growthValue: 0,
   };
   await saveGarden(record);
+  await addPlantedSeedId(seedId);
   return { success: true };
 }
 
@@ -300,6 +312,7 @@ export async function removeBugsWithSpray(): Promise<{ success: boolean; message
   if (!used) return { success: false, message: "沒有殺蟲劑，請到商店購買" };
   record.growthValue = computeGrowthValue(record);
   record.hasBugs = false;
+  record.lastBugsRemovedAt = Date.now();
   await saveGarden(record);
   setLastGardenVisit();
   return { success: true };

@@ -110,6 +110,8 @@ export interface AchievementRecord {
   /** 剪雜草 3 次 */
   weedsTrimmed3Unlocked: boolean;
   weedsTrimmed3UnlockedAt?: number;
+  /** 曾種過的種子 ID 列表（商店不再販賣） */
+  plantedSeedIds?: string[];
 }
 
 let dbPromise: ReturnType<typeof openDB> | null = null;

@@ -22,4 +22,5 @@ export const SEED_NAMES: Record<string, string> = {
   sun_flower: "向日葵",
   tomato: "番茄",
   rose: "玫瑰花",
+  brocoli: "花椰菜",
 };
