@@ -114,6 +114,10 @@ export default function GardenPage() {
   const [forkAnimationDurationMs, setForkAnimationDurationMs] = useState(1200);
   /** 開花／收成慶祝粒子顯示 */
   const [showCelebration, setShowCelebration] = useState(false);
+  /** 收成中：保留植物畫面做縮小淡出動畫（0.5s）後再接彩帶與音效 */
+  const [harvestingGarden, setHarvestingGarden] = useState<Awaited<ReturnType<typeof getGarden>> | null>(null);
+  /** 開花瞬間：光團放大淡出（0.5s）＋短音效 */
+  const [showBloomFlash, setShowBloomFlash] = useState(false);
   /** 上一筆成長階段，用於偵測「剛開花」 */
   const prevStageRef = useRef<number | null>(null);
   const [achievements, setAchievements] = useState<AchievementState | null>(null);
@@ -135,9 +139,9 @@ export default function GardenPage() {
       const newStage = g?.growthStage ?? null;
       prevStageRef.current = newStage;
       if (prevStage !== null && prevStage < 4 && newStage !== null && newStage >= 4) {
-        playCelebrationSound();
-        setShowCelebration(true);
-        setTimeout(() => setShowCelebration(false), 3000);
+        unlockAudio();
+        playSparkleSound();
+        setShowBloomFlash(true);
       }
       setGarden(g);
       setInventory(inv);
@@ -173,6 +177,13 @@ export default function GardenPage() {
       setLastGardenVisit();
     };
   }, []);
+
+  /** 開花光團 0.5s 後關閉 */
+  useEffect(() => {
+    if (!showBloomFlash) return;
+    const t = setTimeout(() => setShowBloomFlash(false), 500);
+    return () => clearTimeout(t);
+  }, [showBloomFlash]);
 
   const showMessage = (msg: string) => {
     setMessage(msg);
@@ -390,23 +401,28 @@ export default function GardenPage() {
   const handleHarvest = useCallback(async () => {
     unlockAudio();
     const result = await harvest();
-    if (result.success) {
+    if (result.success && garden) {
+      let harvestMessage: string;
       if (result.coinsAwarded != null) {
         const bloomAch = await unlockFirstBloom();
-        if (bloomAch.justUnlocked && bloomAch.coinsAwarded > 0) {
-          showMessage(`成就解鎖：第一次開花！獲得 ${bloomAch.coinsAwarded} 代幣。收成獲得 ${result.coinsAwarded} 代幣～`);
-        } else {
-          showMessage(`獲得 ${result.coinsAwarded} 代幣！收成完成，可以再種新種子～`);
-        }
+        harvestMessage = bloomAch.justUnlocked && bloomAch.coinsAwarded > 0
+          ? `成就解鎖：第一次開花！獲得 ${bloomAch.coinsAwarded} 代幣。收成獲得 ${result.coinsAwarded} 代幣～`
+          : `獲得 ${result.coinsAwarded} 代幣！收成完成，可以再種新種子～`;
       } else {
-        showMessage("收成完成，可以再種新種子～");
+        harvestMessage = "收成完成，可以再種新種子～";
       }
-      playCelebrationSound();
-      setShowCelebration(true);
-      setTimeout(() => setShowCelebration(false), 3000);
-      load();
+      setHarvestingGarden(garden);
+      setGarden(null);
+      setTimeout(() => {
+        setHarvestingGarden(null);
+        showMessage(harvestMessage);
+        playCelebrationSound();
+        setShowCelebration(true);
+        setTimeout(() => setShowCelebration(false), 3000);
+        load();
+      }, 500);
     }
-  }, [load]);
+  }, [load, garden]);
 
   return (
     <div className="flex min-h-[100dvh] flex-col items-center bg-[var(--background)] px-4 py-8 sm:px-6 sm:py-10">
@@ -540,20 +556,25 @@ export default function GardenPage() {
             )}
           </div>
         )}
-        {garden && (
+        {(garden || harvestingGarden) && (() => {
+          const displayGarden = garden ?? harvestingGarden!;
+          const isHarvesting = !!harvestingGarden;
+          return (
           <div className="flex flex-col items-center gap-6 rounded-3xl border-2 border-green-200 bg-white/90 p-6 shadow-lg">
             <p className="text-center text-lg font-bold text-[var(--foreground)]">
-              {SEED_NAMES[garden.seedId] ?? garden.seedId}
-              {garden.isBloom && " 🌸 已開花"}
+              {SEED_NAMES[displayGarden.seedId] ?? displayGarden.seedId}
+              {displayGarden.isBloom && " 🌸 已開花"}
             </p>
             <div className="relative h-48 w-48 sm:h-56 sm:w-56">
               <Image
-                src={getSeedGrowthImagePath(garden.seedId, garden.growthStage)}
+                src={getSeedGrowthImagePath(displayGarden.seedId, displayGarden.growthStage)}
                 alt=""
                 fill
-                className="garden-plant-sway object-contain"
+                className={`object-contain ${isHarvesting ? "garden-harvest-plant-exit" : "garden-plant-sway"}`}
                 unoptimized
               />
+              {/* 開花瞬間：花苞位置光團放大＋淡出 */}
+              {garden && showBloomFlash && <span className="garden-bloom-flash" aria-hidden />}
               {/* 土壤層：始終存在，高度不超過雜草底，僅一薄條地面 */}
               <div
                 className="garden-weed-soil pointer-events-none absolute left-0 right-0 bottom-0 h-[6%] rounded-t-[30%]"
@@ -563,7 +584,7 @@ export default function GardenPage() {
                 }}
                 aria-hidden
               />
-              {showBugs && !garden.isBloom && (
+              {!isHarvesting && showBugs && !displayGarden.isBloom && (
                 <div
                   className="pointer-events-none absolute inset-0 z-[8] flex items-center justify-center gap-1"
                   aria-hidden
@@ -584,7 +605,7 @@ export default function GardenPage() {
                   ))}
                 </div>
               )}
-              {showBees && !garden.isBloom && (
+              {!isHarvesting && showBees && !displayGarden.isBloom && (
                 <div
                   className="pointer-events-none absolute inset-0 z-[8] flex items-center justify-center"
                   aria-hidden
@@ -613,7 +634,7 @@ export default function GardenPage() {
                   ))}
                 </div>
               )}
-              {hasWeeds && (
+              {!isHarvesting && hasWeeds && (
                 <div
                   className={`pointer-events-none absolute bottom-0 left-0 right-0 h-[45%] overflow-hidden ${animating === "weed" ? "garden-animate-weed garden-weed-layer" : ""}`}
                   style={animating === "weed" ? ({ "--weed-duration": `${weedAnimationDurationMs}ms` } as React.CSSProperties) : undefined}
@@ -655,6 +676,7 @@ export default function GardenPage() {
                       unoptimized
                     />
                   </div>
+                  {/* 水滴：多一層較慢的錯開，總 12 顆 */}
                   {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
                     <span
                       key={i}
@@ -665,6 +687,17 @@ export default function GardenPage() {
                       }}
                     />
                   ))}
+                  {[8, 9, 10, 11].map((i) => (
+                    <span
+                      key={i}
+                      className="garden-water-dot absolute top-0 h-1.5 w-1.5 rounded-full bg-blue-300/80"
+                      style={{
+                        left: `${20 + ((i - 8) % 2) * 35}%`,
+                        animationDelay: `${0.9 + (i - 8) * 0.25}s`,
+                      }}
+                    />
+                  ))}
+                  {/* 水花環：內層 3 個 + 外層 2 個 */}
                   {[0, 1, 2].map((i) => (
                     <span
                       key={`splash-${i}`}
@@ -674,6 +707,37 @@ export default function GardenPage() {
                       }}
                     />
                   ))}
+                  {[0, 1].map((i) => (
+                    <span
+                      key={`splash-outer-${i}`}
+                      className="garden-water-splash-ring-outer absolute bottom-[18%] left-1/2 h-12 w-12 -translate-x-1/2 rounded-full border-2 border-blue-200/60"
+                      style={{
+                        animationDelay: `${1.35 + i * 0.3}s`,
+                      }}
+                    />
+                  ))}
+                  {/* 葉面反光 */}
+                  <span
+                    className="garden-water-leaf-shine absolute w-[14%] h-[7%]"
+                    style={{
+                      top: "38%",
+                      left: "38%",
+                      animationDelay: "1.15s",
+                    }}
+                  />
+                  <span
+                    className="garden-water-leaf-shine absolute w-[12%] h-[6%]"
+                    style={{
+                      top: "46%",
+                      left: "48%",
+                      animationDelay: "1.4s",
+                    }}
+                  />
+                  {/* 完成閃光 */}
+                  <span
+                    className="garden-water-complete-flash"
+                    style={{ animationDelay: "2.4s" }}
+                  />
                   {[0, 1, 2, 3, 4].map((i) => (
                     <span
                       key={`spark-${i}`}
@@ -692,7 +756,7 @@ export default function GardenPage() {
                   className="garden-animate-fork pointer-events-none absolute inset-0 z-10 overflow-visible"
                   style={{ ["--fork-duration" as string]: `${forkAnimationDurationMs}ms` }}
                 >
-                  <div className="garden-tool-fork-wrap">
+                  <div className="garden-tool-fork-wrap relative">
                     <Image
                       src={GARDEN_FORK_IMAGE}
                       alt=""
@@ -701,8 +765,10 @@ export default function GardenPage() {
                       className="garden-tool-fork-swing object-contain"
                       unoptimized
                     />
+                    <span className="garden-fork-metal-flash absolute inset-0" aria-hidden />
                   </div>
                   <div className="garden-fork-shake-layer absolute inset-0 rounded-full" />
+                  {/* 土粒：快批 */}
                   {[0, 1, 2, 3, 4, 5, 6].map((i) => (
                     <span
                       key={`dirt-${i}`}
@@ -711,6 +777,30 @@ export default function GardenPage() {
                         top: `${40 + (i % 3) * 12}%`,
                         left: `${30 + (i % 4) * 14}%`,
                         animationDelay: `${0.1 + i * 0.08}s`,
+                      }}
+                    />
+                  ))}
+                  {/* 土粒：慢批 */}
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <span
+                      key={`dirt-slow-${i}`}
+                      className="garden-fork-dirt absolute h-2 w-2 rounded-full bg-amber-500/75"
+                      style={{
+                        top: `${38 + (i % 2) * 16}%`,
+                        left: `${26 + (i % 3) * 18}%`,
+                        animationDelay: `${0.35 + i * 0.14}s`,
+                      }}
+                    />
+                  ))}
+                  {/* 小石頭：深褐色略大 */}
+                  {[0, 1, 2, 3].map((i) => (
+                    <span
+                      key={`stone-${i}`}
+                      className="garden-fork-stone absolute h-2.5 w-2.5 rounded-full bg-amber-800/90"
+                      style={{
+                        top: `${42 + (i % 2) * 10}%`,
+                        left: `${32 + (i % 2) * 24}%`,
+                        animationDelay: `${0.2 + i * 0.18}s`,
                       }}
                     />
                   ))}
@@ -725,6 +815,12 @@ export default function GardenPage() {
                       }}
                     />
                   ))}
+                  {/* 鬆土完成閃光 */}
+                  <span
+                    className="garden-fork-complete-flash"
+                    style={{ animationDelay: `${Math.max(0, forkAnimationDurationMs - 120)}ms` }}
+                    aria-hidden
+                  />
                 </div>
               )}
               {animating === "mist" && (
@@ -753,6 +849,32 @@ export default function GardenPage() {
                       }}
                     />
                   ))}
+                  {/* 第二層霧：大、慢、模糊 */}
+                  {[0, 1, 2, 3].map((i) => (
+                    <span
+                      key={`mist-outer-${i}`}
+                      className="garden-mist-cloud-outer absolute h-14 w-14 rounded-full bg-sky-200/50"
+                      style={{
+                        top: `${28 + (i % 2) * 18}%`,
+                        left: `${22 + (i % 2) * 26 + i * 5}%`,
+                        animationDelay: `${0.15 + i * 0.18}s`,
+                      }}
+                    />
+                  ))}
+                  {/* 葉片掛珠：噴霧中後段出現 */}
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <span
+                      key={`mist-bead-${i}`}
+                      className="garden-mist-leaf-bead"
+                      style={{
+                        width: 6,
+                        height: 6,
+                        top: `${36 + (i % 3) * 16}%`,
+                        left: `${30 + (i % 3) * 20}%`,
+                        animationDelay: `${0.55 + i * 0.08}s`,
+                      }}
+                    />
+                  ))}
                   {[0, 1, 2, 3, 4].map((i) => (
                     <span
                       key={`mist-spark-${i}`}
@@ -775,6 +897,11 @@ export default function GardenPage() {
                       }}
                     />
                   ))}
+                  <span
+                    className="garden-mist-complete-flash"
+                    style={{ animationDelay: `${Math.round(mistAnimationDurationMs * 0.85)}ms` }}
+                    aria-hidden
+                  />
                 </div>
               )}
               {animating === "soil" && (
@@ -811,13 +938,23 @@ export default function GardenPage() {
                       }}
                     />
                   ))}
+                  <span
+                    className="garden-soil-ground-shine"
+                    style={{ animationDelay: "0.75s" }}
+                    aria-hidden
+                  />
+                  <span
+                    className="garden-soil-complete-flash"
+                    style={{ animationDelay: "1100ms" }}
+                    aria-hidden
+                  />
                 </div>
               )}
               {animating === "fertilize" && (
                 <div
                   className={`pointer-events-none absolute inset-0 z-10 overflow-visible ${fertilizeType === "premium" ? "garden-animate-fertilize-premium" : "garden-animate-fertilize-basic"}`}
                 >
-                  <div className="garden-fertilize-product-wrap">
+                  <div className="garden-fertilize-product-wrap relative">
                     <Image
                       src={fertilizeType === "premium" ? FERTILIZER_PREMIUM_IMAGE : FERTILIZER_BASIC_IMAGE}
                       alt=""
@@ -826,21 +963,22 @@ export default function GardenPage() {
                       className="garden-fertilize-product-pour object-contain"
                       unoptimized
                     />
+                    <span className="garden-fertilize-mouth-glow absolute" aria-hidden />
                   </div>
-                  {/* 一般肥料：琥珀色粒子（袋裝撒落感） */}
+                  {/* 一般肥料：琥珀色粒子（袋裝撒落感，落地彈跳） */}
                   {fertilizeType === "basic" &&
-                    [0, 1, 2, 3, 4, 5, 6].map((i) => (
+                    [0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
                       <span
                         key={`p-${i}`}
                         className="garden-fertilize-particle absolute h-3 w-3 rounded-full bg-amber-300"
                         style={{
-                          top: `${28 + (i % 4) * 18}%`,
-                          left: `${18 + Math.floor(i / 4) * 28}%`,
-                          animationDelay: `${0.5 + i * 0.12}s`,
+                          top: `${28 + (i % 4) * 16}%`,
+                          left: `${18 + Math.floor(i / 4) * 26}%`,
+                          animationDelay: `${0.5 + i * 0.11}s`,
                         }}
                       />
                     ))}
-                  {/* 高級肥料：紫色光點 + 光環，效果更華麗 */}
+                  {/* 高級肥料：紫色光點 + 三層光環 + 星形閃爍 */}
                   {fertilizeType === "premium" && (
                     <>
                       {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((i) => (
@@ -855,6 +993,19 @@ export default function GardenPage() {
                         />
                       ))}
                       <div className="garden-fertilize-premium-glow" aria-hidden />
+                      <div className="garden-fertilize-premium-glow-ring-2" aria-hidden />
+                      <div className="garden-fertilize-premium-glow-ring-3" aria-hidden />
+                      {[0, 1, 2, 3, 4].map((i) => (
+                        <span
+                          key={`star-${i}`}
+                          className="garden-fertilize-star"
+                          style={{
+                            top: `${32 + (i % 2) * 22}%`,
+                            left: `${28 + (i % 3) * 18}%`,
+                            animationDelay: `${0.5 + i * 0.18}s`,
+                          }}
+                        />
+                      ))}
                     </>
                   )}
                   {[0, 1, 2, 3, 4, 5].map((i) => (
@@ -868,11 +1019,20 @@ export default function GardenPage() {
                       }}
                     />
                   ))}
+                  {/* 施肥完成閃光 */}
+                  <span
+                    className="garden-fertilize-complete-flash"
+                    style={{ animationDelay: "2.85s" }}
+                    aria-hidden
+                  />
                 </div>
               )}
               {animating === "weed" && (
-                <div className="garden-animate-weed pointer-events-none absolute inset-0 z-10 overflow-visible">
-                  <div className="garden-weed-scissors-wrap">
+                <div
+                  className="garden-animate-weed garden-weed-shake-container pointer-events-none absolute inset-0 z-10 overflow-visible"
+                  style={{ ["--weed-duration" as string]: `${weedAnimationDurationMs}ms` }}
+                >
+                  <div className="garden-weed-scissors-wrap relative">
                     <Image
                       src={GARDEN_SCISSORS_IMAGE}
                       alt=""
@@ -881,6 +1041,11 @@ export default function GardenPage() {
                       className="garden-weed-scissors-snap object-contain"
                       style={{ animationDuration: `${weedAnimationDurationMs}ms` }}
                       unoptimized
+                    />
+                    <span
+                      className="garden-weed-blade-flash"
+                      style={{ animationDelay: `${weedAnimationDurationMs * 0.28}ms` }}
+                      aria-hidden
                     />
                   </div>
                   {[0, 1, 2].map((i) => (
@@ -895,6 +1060,17 @@ export default function GardenPage() {
                       }}
                     />
                   ))}
+                  {/* 草屑飛散 */}
+                  <span className="garden-weed-debris garden-weed-debris-1" style={{ bottom: "22%", left: "38%" }} aria-hidden />
+                  <span className="garden-weed-debris garden-weed-debris-2" style={{ bottom: "20%", left: "48%" }} aria-hidden />
+                  <span className="garden-weed-debris garden-weed-debris-3" style={{ bottom: "24%", left: "42%" }} aria-hidden />
+                  <span className="garden-weed-debris garden-weed-debris-4" style={{ bottom: "18%", left: "52%" }} aria-hidden />
+                  {/* 完成閃光 */}
+                  <span
+                    className="garden-weed-complete-flash"
+                    style={{ animationDelay: `${weedAnimationDurationMs * 0.8}ms` }}
+                    aria-hidden
+                  />
                 </div>
               )}
               {animating === "spray" && (
@@ -915,7 +1091,7 @@ export default function GardenPage() {
                   {[0, 1, 2, 3, 4, 5, 6].map((i) => (
                     <span
                       key={`spray-cloud-${i}`}
-                      className="garden-spray-cloud absolute h-10 w-10 rounded-full bg-red-200/60"
+                      className="garden-spray-cloud absolute h-10 w-10 rounded-full bg-emerald-200/60"
                       style={{
                         top: `${28 + (i % 3) * 16}%`,
                         left: `${22 + (i % 2) * 24 + i * 3}%`,
@@ -923,10 +1099,22 @@ export default function GardenPage() {
                       }}
                     />
                   ))}
+                  {/* 第二層雲：半透明、藥劑感 */}
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <span
+                      key={`spray-cloud-outer-${i}`}
+                      className="garden-spray-cloud-outer absolute h-12 w-12 rounded-full bg-emerald-100/50"
+                      style={{
+                        top: `${26 + (i % 2) * 20}%`,
+                        left: `${20 + (i % 2) * 28 + i * 4}%`,
+                        animationDelay: `${0.2 + i * 0.14}s`,
+                      }}
+                    />
+                  ))}
                   {[0, 1, 2, 3, 4, 5].map((i) => (
                     <span
                       key={`spray-drop-${i}`}
-                      className="garden-spray-drop absolute h-2 w-2 rounded-full bg-red-300/80"
+                      className="garden-spray-drop absolute h-2 w-2 rounded-full bg-emerald-300/80"
                       style={{
                         top: `${36 + (i % 3) * 14}%`,
                         left: `${26 + (i % 4) * 14}%`,
@@ -934,20 +1122,25 @@ export default function GardenPage() {
                       }}
                     />
                   ))}
+                  <span
+                    className="garden-spray-complete-flash"
+                    style={{ animationDelay: `${Math.round(SPRAY_ANIMATION_DURATION_MS * 0.88)}ms` }}
+                    aria-hidden
+                  />
                 </div>
               )}
             </div>
-            {showBugs && !garden.isBloom && (
+            {garden && showBugs && !garden.isBloom && (
               <p className="rounded-xl bg-amber-100 px-4 py-2 text-center text-sm font-semibold text-amber-900 shadow-sm">
                 植物有蟲害，成長變慢囉！快除蟲～
               </p>
             )}
-            {showBees && !garden.isBloom && (
+            {garden && showBees && !garden.isBloom && (
               <p className="rounded-xl bg-amber-100 px-4 py-2 text-center text-sm font-semibold text-amber-900 shadow-sm">
                 有蜜蜂在飛，植物成長變慢囉！快驅蜂～
               </p>
             )}
-            {!garden.isBloom && (
+            {garden && !garden.isBloom && (
               <div className="flex flex-wrap justify-center gap-3">
                 {showBugs && (
                   <button
@@ -1067,7 +1260,7 @@ export default function GardenPage() {
                 )}
               </div>
             )}
-            {garden.isBloom && (
+            {garden?.isBloom && !isHarvesting && (
               <button
                 type="button"
                 onClick={handleHarvest}
@@ -1077,7 +1270,8 @@ export default function GardenPage() {
               </button>
             )}
           </div>
-        )}
+          );
+        })()}
       </div>
     </div>
   );
