@@ -5,6 +5,7 @@ import {
   SLOW_CORRECT_DELTA,
   FAST_CORRECT_DELTA,
   MIN_WEIGHT,
+  getSlowThresholdMs,
 } from './types';
 import type { Question, GenerateQuestionOptions } from '@/src/generator';
 import { generateQuestion, generateQuestionFromSkillKey } from '@/src/generator';
@@ -15,16 +16,18 @@ export { SLOW_RESPONSE_MS } from './types';
 /**
  * Compute new weight after an attempt.
  * Wrong: +3, slow correct: +1, fast correct: -1, min 0.
+ * thresholdMs 未傳時使用預設 SLOW_RESPONSE_MS。
  */
 export function computeNewWeight(
   currentWeight: number,
   correct: boolean,
-  responseTimeMs: number
+  responseTimeMs: number,
+  thresholdMs: number = SLOW_RESPONSE_MS
 ): number {
   if (!correct) {
     return currentWeight + WRONG_DELTA;
   }
-  if (responseTimeMs > SLOW_RESPONSE_MS) {
+  if (responseTimeMs > thresholdMs) {
     return currentWeight + SLOW_CORRECT_DELTA;
   }
   return Math.max(MIN_WEIGHT, currentWeight + FAST_CORRECT_DELTA);
@@ -32,6 +35,7 @@ export function computeNewWeight(
 
 /**
  * Update a single skill's weight in the map (mutates and returns the map).
+ * 依 skillKey 運算類型使用對應的慢速閾值。
  */
 export function updateWeight(
   weightsMap: WeightsMap,
@@ -40,7 +44,8 @@ export function updateWeight(
   responseTimeMs: number
 ): WeightsMap {
   const current = weightsMap[skillKey] ?? 0;
-  weightsMap[skillKey] = computeNewWeight(current, correct, responseTimeMs);
+  const thresholdMs = getSlowThresholdMs(skillKey);
+  weightsMap[skillKey] = computeNewWeight(current, correct, responseTimeMs, thresholdMs);
   return weightsMap;
 }
 

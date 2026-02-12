@@ -23,6 +23,9 @@ export function DrillEndScreen({
   const accuracy =
     totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
   const avgSec = (avgTimeMs / 1000).toFixed(1);
+  const minCorrectForReward = Math.ceil(totalCount * 0.8);
+  const needMoreCorrect = Math.max(0, minCorrectForReward - correctCount);
+  const showThresholdHint = needMoreCorrect > 0 && (rewardCoins == null || rewardCoins === 0);
 
   return (
     <div className="flex w-full max-w-md flex-col gap-5 rounded-2xl bg-white p-6 shadow-lg sm:max-w-lg sm:gap-6 sm:p-8 md:max-w-xl md:p-10">
@@ -32,6 +35,11 @@ export function DrillEndScreen({
       {rewardCoins != null && rewardCoins > 0 && (
         <p className="rounded-xl bg-amber-100 px-4 py-2 text-center text-base font-bold text-amber-900 sm:text-lg">
           🪙 答對 80% 以上，獲得 {rewardCoins} 代幣！
+        </p>
+      )}
+      {showThresholdHint && (
+        <p className="rounded-xl bg-gray-100 px-4 py-2 text-center text-base font-semibold text-gray-700 sm:text-lg">
+          再答對 {needMoreCorrect} 題可拿代幣喔！（需達 80%）
         </p>
       )}
       <div className="grid grid-cols-2 gap-3 text-center sm:gap-4 md:gap-5">

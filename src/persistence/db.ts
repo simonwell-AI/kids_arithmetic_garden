@@ -43,6 +43,8 @@ export interface SkillWeightRecord {
 export interface DailyProgressRecord {
   date: string;
   questionsCompleted: number;
+  /** 答對題數（用於今日任務 70% 門檻與連續天數） */
+  correctCount?: number;
   completedAt?: number;
 }
 

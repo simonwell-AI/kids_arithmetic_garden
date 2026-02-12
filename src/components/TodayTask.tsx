@@ -60,8 +60,11 @@ export function TodayTask() {
         </div>
       ) : (
         <>
-          <p className="mb-3 text-center text-sm text-amber-700">
+          <p className="mb-2 text-center text-sm text-amber-700">
             再 {remaining} 題就完成今日任務！
+          </p>
+          <p className="mb-3 text-center text-xs text-amber-600">
+            完成今日任務可賺代幣養花園～
           </p>
           <Link
             href="/today"

@@ -8,4 +8,5 @@ export * from "./inventory";
 export * from "./garden";
 export * from "./gardenVisit";
 export * from "./achievements";
+export * from "./weaknesses";
 export * from "./db";

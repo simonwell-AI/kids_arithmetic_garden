@@ -343,6 +343,8 @@ export default function DrillPage() {
               <FeedbackToast
                 correct={lastCorrect}
                 responseTimeMs={lastTimeMs}
+                correctAnswer={question.answer}
+                speakCorrectAnswer={speakEnabled}
                 onDismiss={handleDismissFeedback}
               />
             )}

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { exportToJson, importFromJson, downloadExport, getCoins } from "@/src/persistence";
 import { TodayTask } from "@/src/components/TodayTask";
+import { WeaknessSummary } from "@/src/components/WeaknessSummary";
 
 const COIN_IMAGE = "/garden-assets/coins/coin.png";
 
@@ -108,6 +109,7 @@ export default function Home() {
           </Link>
         </div>
         <TodayTask />
+        <WeaknessSummary />
         <div className="flex w-full flex-col gap-4 sm:flex-row sm:justify-center sm:gap-6">
           <Link
             href="/drill"
@@ -122,7 +124,10 @@ export default function Home() {
             九九乘法
           </Link>
         </div>
-        <div className="mt-4 flex w-full max-w-sm flex-col gap-2 text-sm text-gray-600 sm:mt-6 sm:flex-row sm:justify-center">
+        <p className="mt-2 text-center text-xs text-gray-500">
+          匯出內容包含答題紀錄，請妥善保管。
+        </p>
+        <div className="mt-2 flex w-full max-w-sm flex-col gap-2 text-sm text-gray-600 sm:mt-4 sm:flex-row sm:justify-center">
           <button
             type="button"
             onClick={handleExport}

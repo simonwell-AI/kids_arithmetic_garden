@@ -248,10 +248,12 @@ export function OperationSpeedQuiz({
           />
         </>
       )}
-      {showFeedback && (
+      {showFeedback && question && (
         <FeedbackToast
           correct={lastCorrect}
           responseTimeMs={lastTimeMs}
+          correctAnswer={question.answer}
+          speakCorrectAnswer={false}
           onDismiss={handleDismissFeedback}
         />
       )}

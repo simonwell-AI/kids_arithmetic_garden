@@ -2,6 +2,10 @@ import { getDB, STORE_DAILY_PROGRESS, type DailyProgressRecord } from "./db";
 
 /** 每日任務題數 */
 export const TODAY_SET_SIZE = 20;
+/** 今日任務領獎答對率門檻（70%） */
+export const TODAY_REWARD_CORRECT_RATIO = 0.7;
+/** 答對至少幾題才可領今日獎勵 */
+export const MIN_CORRECT_FOR_TODAY_REWARD = Math.ceil(TODAY_SET_SIZE * TODAY_REWARD_CORRECT_RATIO);
 
 export function getTodayDateString(): string {
   const now = new Date();
@@ -18,36 +22,43 @@ function todayKey(): string {
 export async function getTodayProgress(): Promise<{
   completed: number;
   total: number;
+  correctCount: number;
   completedAt?: number;
 }> {
-  if (typeof window === "undefined") return { completed: 0, total: TODAY_SET_SIZE };
+  if (typeof window === "undefined") return { completed: 0, total: TODAY_SET_SIZE, correctCount: 0 };
   const db = await getDB();
   const record = await db.get(STORE_DAILY_PROGRESS, todayKey());
-  if (!record) return { completed: 0, total: TODAY_SET_SIZE };
+  if (!record) return { completed: 0, total: TODAY_SET_SIZE, correctCount: 0 };
+  const r = record as DailyProgressRecord;
   return {
-    completed: (record as DailyProgressRecord).questionsCompleted,
+    completed: r.questionsCompleted,
     total: TODAY_SET_SIZE,
-    completedAt: (record as DailyProgressRecord).completedAt,
+    correctCount: r.correctCount ?? 0,
+    completedAt: r.completedAt,
   };
 }
 
-/** 每答一題時計入今日任務進度（僅「今日任務」頁 /today 呼叫；練習、九九乘法不算） */
-export async function incrementTodayProgress(): Promise<{
+/** 每答一題時計入今日任務進度（僅「今日任務」頁 /today 呼叫）；correct 為該題是否答對。 */
+export async function incrementTodayProgress(correct: boolean): Promise<{
   completed: number;
   total: number;
+  correctCount: number;
   justCompleted?: boolean;
   justStreak7?: boolean;
 }> {
-  if (typeof window === "undefined") return { completed: 0, total: TODAY_SET_SIZE };
+  if (typeof window === "undefined") return { completed: 0, total: TODAY_SET_SIZE, correctCount: 0 };
   const db = await getDB();
   const key = todayKey();
   const existing = (await db.get(STORE_DAILY_PROGRESS, key)) as DailyProgressRecord | undefined;
   const prev = existing?.questionsCompleted ?? 0;
+  const prevCorrect = existing?.correctCount ?? 0;
   const next = Math.min(TODAY_SET_SIZE, prev + 1);
+  const nextCorrect = correct ? Math.min(TODAY_SET_SIZE, prevCorrect + 1) : prevCorrect;
   const completedAt = next >= TODAY_SET_SIZE ? Date.now() : existing?.completedAt;
   const record: DailyProgressRecord = {
     date: key,
     questionsCompleted: next,
+    correctCount: nextCorrect,
     completedAt,
   };
   await db.put(STORE_DAILY_PROGRESS, record);
@@ -57,6 +68,7 @@ export async function incrementTodayProgress(): Promise<{
   return {
     completed: next,
     total: TODAY_SET_SIZE,
+    correctCount: nextCorrect,
     ...(justCompleted && { justCompleted: true }),
     ...(justStreak7 && { justStreak7: true }),
   };
@@ -70,7 +82,11 @@ export async function getStreak(): Promise<number> {
   const db = await getDB();
   const all = (await db.getAll(STORE_DAILY_PROGRESS)) as DailyProgressRecord[];
   const completedDays = all
-    .filter((r) => r.questionsCompleted >= TODAY_SET_SIZE)
+    .filter(
+      (r) =>
+        r.questionsCompleted >= TODAY_SET_SIZE &&
+        (r.correctCount ?? r.questionsCompleted) >= MIN_CORRECT_FOR_TODAY_REWARD
+    )
     .map((r) => r.date)
     .sort()
     .reverse();
@@ -111,7 +127,12 @@ export async function getRecentBadgeDays(): Promise<string[]> {
   const db = await getDB();
   const all = (await db.getAll(STORE_DAILY_PROGRESS)) as DailyProgressRecord[];
   return all
-    .filter((r) => r.questionsCompleted >= TODAY_SET_SIZE && r.completedAt != null)
+    .filter(
+      (r) =>
+        r.questionsCompleted >= TODAY_SET_SIZE &&
+        (r.correctCount ?? r.questionsCompleted) >= MIN_CORRECT_FOR_TODAY_REWARD &&
+        r.completedAt != null
+    )
     .map((r) => r.date)
     .sort()
     .reverse();
