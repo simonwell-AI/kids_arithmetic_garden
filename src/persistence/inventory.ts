@@ -77,6 +77,19 @@ export async function hasTool(toolId: string): Promise<boolean> {
   return (inv.tools?.[toolId] ?? 0) > 0;
 }
 
+/** 消耗 1 個園藝工具（如肥料瓶、噴霧器、盆栽土）；有則扣 1 並回傳 true，無則回傳 false */
+export async function useTool(toolId: string): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  const inv = normalizeInv(await getInventory());
+  inv.tools = { ...(inv.tools ?? {}) };
+  const n = inv.tools[toolId] ?? 0;
+  if (n < 1) return false;
+  inv.tools[toolId] = n - 1;
+  if (inv.tools[toolId] === 0) delete inv.tools[toolId];
+  await (await getDB()).put(STORE_INVENTORY, inv);
+  return true;
+}
+
 export async function addWateringCan(wateringCanId: string, count: number): Promise<void> {
   if (typeof window === "undefined") return;
   const inv = normalizeInv(await getInventory());

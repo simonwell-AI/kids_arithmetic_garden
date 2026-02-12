@@ -236,6 +236,11 @@ export default function ShopPage() {
               <h2 className="border-b-2 border-[var(--primary)] pb-1.5 text-lg font-bold text-[var(--foreground)]">
                 {label}
               </h2>
+              {key === "tool" && (
+                <p className="text-sm text-gray-600">
+                  肥料瓶、噴霧器、盆栽土在開花收成後會消耗，需再購買新的。
+                </p>
+              )}
               <ul className="grid gap-4 sm:grid-cols-2">
                 {items.map((item) => (
                   <li

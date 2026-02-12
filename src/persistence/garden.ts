@@ -6,6 +6,7 @@ import {
   useFertilizerPremium,
   useInsecticide,
   hasTool,
+  useTool,
 } from "./inventory";
 import { getHasWeeds, setLastGardenVisit } from "./gardenVisit";
 import { addCoins } from "./wallet";
@@ -34,6 +35,10 @@ const BUG_PENALTY_MULTIPLIER = 0.6;
 const BUG_PROBABILITY = 0.15;
 /** 除蟲後多久內不再觸發蟲害（10 分鐘） */
 const BUG_RESPAWN_COOLDOWN_MS = 10 * 60 * 1000;
+/** 進入花園時有蜜蜂蟲害的機率（僅在幼苗以上且目前無蜜蜂時判定） */
+const BEE_PROBABILITY = 0.15;
+/** 驅蜂後多久內不再觸發蜜蜂（10 分鐘） */
+const BEE_RESPAWN_COOLDOWN_MS = 10 * 60 * 1000;
 const FORK_GROWTH_BONUS = 0.12;
 const MIST_GROWTH_BONUS = 0.05;
 const TROWEL_GROWTH_BONUS = 0.5;
@@ -66,6 +71,9 @@ function getGrowthRate(record: GardenRecord): number {
       : WEED_PENALTY_MULTIPLIER;
   }
   if (record.hasBugs) {
+    rate *= BUG_PENALTY_MULTIPLIER;
+  }
+  if (record.hasBees) {
     rate *= BUG_PENALTY_MULTIPLIER;
   }
   return rate;
@@ -110,6 +118,7 @@ export async function getGarden(): Promise<{
   trowelUsed?: boolean;
   lastTrimmedAt?: number;
   hasBugs?: boolean;
+  hasBees?: boolean;
 } | null> {
   if (typeof window === "undefined") return null;
   const record = await getGardenRecord();
@@ -128,6 +137,17 @@ export async function getGarden(): Promise<{
     record.hasBugs = true;
     await saveGarden(record);
   }
+  const pastBeeRespawnCooldown =
+    record.lastBeesRemovedAt == null || now - record.lastBeesRemovedAt > BEE_RESPAWN_COOLDOWN_MS;
+  if (
+    growthStage >= 1 &&
+    !record.hasBees &&
+    pastBeeRespawnCooldown &&
+    Math.random() < BEE_PROBABILITY
+  ) {
+    record.hasBees = true;
+    await saveGarden(record);
+  }
   return {
     seedId: record.seedId,
     plantedAt: record.plantedAt,
@@ -144,6 +164,7 @@ export async function getGarden(): Promise<{
     trowelUsed: record.trowelUsed,
     lastTrimmedAt: record.lastTrimmedAt,
     hasBugs: record.hasBugs ?? false,
+    hasBees: record.hasBees ?? false,
   };
 }
 
@@ -211,6 +232,10 @@ export async function harvest(): Promise<{ success: boolean; message?: string; c
   if (stage >= MAX_GROWTH_STAGE) {
     await addCoins(HARVEST_BLOOM_COINS);
     coinsAwarded = HARVEST_BLOOM_COINS;
+    // 開花收成時消耗肥料瓶、噴霧器、盆栽土各 1（若有），下一株需再購買
+    await useTool("fertilizer_bottle");
+    await useTool("plant_mister");
+    await useTool("potting_soil");
   }
   const db = await getDB();
   await db.delete(STORE_GARDEN, GARDEN_KEY);
@@ -313,6 +338,22 @@ export async function removeBugsWithSpray(): Promise<{ success: boolean; message
   record.growthValue = computeGrowthValue(record);
   record.hasBugs = false;
   record.lastBugsRemovedAt = Date.now();
+  await saveGarden(record);
+  setLastGardenVisit();
+  return { success: true };
+}
+
+/** 噴殺蟲劑驅蜂：消耗 1 殺蟲劑，清除蜜蜂蟲害 */
+export async function removeBeesWithSpray(): Promise<{ success: boolean; message?: string }> {
+  if (typeof window === "undefined") return { success: false, message: "僅支援瀏覽器" };
+  const record = await getGardenRecord();
+  if (!record) return { success: false, message: "尚未種植" };
+  if (!record.hasBees) return { success: false, message: "目前沒有蜜蜂" };
+  const used = await useInsecticide();
+  if (!used) return { success: false, message: "沒有殺蟲劑，請到商店購買" };
+  record.growthValue = computeGrowthValue(record);
+  record.hasBees = false;
+  record.lastBeesRemovedAt = Date.now();
   await saveGarden(record);
   setLastGardenVisit();
   return { success: true };

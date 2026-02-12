@@ -90,6 +90,10 @@ export interface GardenRecord {
   hasBugs?: boolean;
   /** 上次徒手抓蟲時間（用於冷卻） */
   lastBugsRemovedAt?: number;
+  /** 是否有蜜蜂蟲害（降低成長速率） */
+  hasBees?: boolean;
+  /** 上次驅蜂時間（用於冷卻） */
+  lastBeesRemovedAt?: number;
 }
 
 export interface AchievementRecord {

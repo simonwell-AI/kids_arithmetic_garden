@@ -15,6 +15,7 @@ import {
   repotPlant,
   applyPottingSoil,
   removeBugsWithSpray,
+  removeBeesWithSpray,
 } from "@/src/persistence/garden";
 import { getInventoryState } from "@/src/persistence/inventory";
 import { getHasWeeds, setLastGardenVisit } from "@/src/persistence/gardenVisit";
@@ -351,6 +352,27 @@ export default function GardenPage() {
     }
   }, [load]);
 
+  const handleSprayBees = useCallback(async () => {
+    unlockAudio();
+    const result = await removeBeesWithSpray();
+    if (result.success) {
+      const bugAch = await incrementBugsRemoved();
+      if (bugAch.justUnlocked && bugAch.coinsAwarded > 0) {
+        showMessage(`成就解鎖：除蟲 5 次！獲得 ${bugAch.coinsAwarded} 代幣。蜜蜂趕走了！`);
+      } else {
+        showMessage("蜜蜂趕走了！");
+      }
+      setAnimating("spray");
+      const soundMs = await playSpraySound();
+      setTimeout(() => {
+        setAnimating(null);
+        load();
+      }, Math.max(SPRAY_ANIMATION_DURATION_MS, soundMs || 0));
+    } else {
+      showMessage(result.message ?? "驅蜂失敗");
+    }
+  }, [load]);
+
   const forkRemainingMs = garden?.lastForkedAt
     ? Math.max(0, FORK_COOLDOWN_MS - (now - garden.lastForkedAt))
     : 0;
@@ -362,6 +384,8 @@ export default function GardenPage() {
     : 0;
   const hasBugs = garden?.hasBugs ?? false;
   const showBugs = hasBugs;
+  const hasBees = garden?.hasBees ?? false;
+  const showBees = hasBees;
 
   const handleHarvest = useCallback(async () => {
     unlockAudio();
@@ -556,6 +580,35 @@ export default function GardenPage() {
                       }}
                     >
                       🐛
+                    </span>
+                  ))}
+                </div>
+              )}
+              {showBees && !garden.isBloom && (
+                <div
+                  className="pointer-events-none absolute inset-0 z-[8] flex items-center justify-center"
+                  aria-hidden
+                >
+                  {[0, 1, 2].map((i) => (
+                    <span
+                      key={`bee-${i}`}
+                      className="garden-bug-float absolute opacity-90"
+                      style={{
+                        top: `${22 + (i % 3) * 22}%`,
+                        left: `${18 + (i % 2) * 32 + (i === 2 ? 16 : 0)}%`,
+                        width: 48,
+                        height: 48,
+                        animationDelay: `${i * 0.25}s`,
+                      }}
+                    >
+                      <Image
+                        src="/garden-assets/bee/bee_flying_animation.gif"
+                        alt=""
+                        width={48}
+                        height={48}
+                        className="h-full w-full object-contain"
+                        unoptimized
+                      />
                     </span>
                   ))}
                 </div>
@@ -889,20 +942,34 @@ export default function GardenPage() {
                 植物有蟲害，成長變慢囉！快除蟲～
               </p>
             )}
+            {showBees && !garden.isBloom && (
+              <p className="rounded-xl bg-amber-100 px-4 py-2 text-center text-sm font-semibold text-amber-900 shadow-sm">
+                有蜜蜂在飛，植物成長變慢囉！快驅蜂～
+              </p>
+            )}
             {!garden.isBloom && (
               <div className="flex flex-wrap justify-center gap-3">
                 {showBugs && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={handleSpray}
-                      disabled={animating !== null || (inventory?.insecticide ?? 0) < 1}
-                      title={(inventory?.insecticide ?? 0) < 1 ? "請到商店購買殺蟲劑" : undefined}
-                      className="min-h-[48px] rounded-2xl bg-red-100 px-6 font-bold text-red-800 shadow-sm disabled:opacity-50 hover:bg-red-200 active:scale-[0.98] disabled:cursor-not-allowed"
-                    >
-                      🐛 噴殺蟲劑（× {inventory?.insecticide ?? 0}）
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    onClick={handleSpray}
+                    disabled={animating !== null || (inventory?.insecticide ?? 0) < 1}
+                    title={(inventory?.insecticide ?? 0) < 1 ? "請到商店購買殺蟲劑" : undefined}
+                    className="min-h-[48px] rounded-2xl bg-red-100 px-6 font-bold text-red-800 shadow-sm disabled:opacity-50 hover:bg-red-200 active:scale-[0.98] disabled:cursor-not-allowed"
+                  >
+                    🐛 噴殺蟲劑（× {inventory?.insecticide ?? 0}）
+                  </button>
+                )}
+                {showBees && (
+                  <button
+                    type="button"
+                    onClick={handleSprayBees}
+                    disabled={animating !== null || (inventory?.insecticide ?? 0) < 1}
+                    title={(inventory?.insecticide ?? 0) < 1 ? "請到商店購買殺蟲劑" : undefined}
+                    className="min-h-[48px] rounded-2xl bg-amber-100 px-6 font-bold text-amber-800 shadow-sm disabled:opacity-50 hover:bg-amber-200 active:scale-[0.98] disabled:cursor-not-allowed"
+                  >
+                    🐝 驅蜂（殺蟲劑 × {inventory?.insecticide ?? 0}）
+                  </button>
                 )}
                 {hasWeeds && (
                   <button
