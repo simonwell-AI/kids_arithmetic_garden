@@ -665,7 +665,7 @@ export default function GardenPage() {
                 </div>
               )}
               {animating === "water" && (
-                <div className="garden-animate-water pointer-events-none absolute inset-0 z-10 overflow-visible">
+                <div className="garden-animate-water pointer-events-none absolute inset-0 z-[20] overflow-visible">
                   <div className="garden-watering-can-wrap">
                     <Image
                       src={wateringCanImagePath}
@@ -753,7 +753,7 @@ export default function GardenPage() {
               )}
               {animating === "fork" && (
                 <div
-                  className="garden-animate-fork pointer-events-none absolute inset-0 z-10 overflow-visible"
+                  className="garden-animate-fork pointer-events-none absolute inset-0 z-[20] overflow-visible"
                   style={{ ["--fork-duration" as string]: `${forkAnimationDurationMs}ms` }}
                 >
                   <div className="garden-tool-fork-wrap relative">
@@ -825,7 +825,7 @@ export default function GardenPage() {
               )}
               {animating === "mist" && (
                 <div
-                  className="garden-animate-mist pointer-events-none absolute inset-0 z-10 overflow-visible"
+                  className="garden-animate-mist pointer-events-none absolute inset-0 z-[20] overflow-visible"
                   style={{ ["--mist-duration" as string]: `${mistAnimationDurationMs}ms` }}
                 >
                   <div className="garden-tool-mist-wrap">
@@ -905,7 +905,7 @@ export default function GardenPage() {
                 </div>
               )}
               {animating === "soil" && (
-                <div className="garden-animate-soil pointer-events-none absolute inset-0 z-10 overflow-visible">
+                <div className="garden-animate-soil pointer-events-none absolute inset-0 z-[20] overflow-visible">
                   <div className="garden-soil-bag-wrap">
                     <Image
                       src={POTTING_SOIL_IMAGE}
@@ -952,7 +952,7 @@ export default function GardenPage() {
               )}
               {animating === "fertilize" && (
                 <div
-                  className={`pointer-events-none absolute inset-0 z-10 overflow-visible ${fertilizeType === "premium" ? "garden-animate-fertilize-premium" : "garden-animate-fertilize-basic"}`}
+                  className={`pointer-events-none absolute inset-0 z-[20] overflow-visible ${fertilizeType === "premium" ? "garden-animate-fertilize-premium" : "garden-animate-fertilize-basic"}`}
                 >
                   <div className="garden-fertilize-product-wrap relative">
                     <Image
@@ -1029,7 +1029,7 @@ export default function GardenPage() {
               )}
               {animating === "weed" && (
                 <div
-                  className="garden-animate-weed garden-weed-shake-container pointer-events-none absolute inset-0 z-10 overflow-visible"
+                  className="garden-animate-weed garden-weed-shake-container pointer-events-none absolute inset-0 z-[20] overflow-visible"
                   style={{ ["--weed-duration" as string]: `${weedAnimationDurationMs}ms` }}
                 >
                   <div className="garden-weed-scissors-wrap relative">
@@ -1075,7 +1075,7 @@ export default function GardenPage() {
               )}
               {animating === "spray" && (
                 <div
-                  className="garden-animate-spray pointer-events-none absolute inset-0 z-10 overflow-visible"
+                  className="garden-animate-spray pointer-events-none absolute inset-0 z-[20] overflow-visible"
                   style={{ ["--spray-duration" as string]: `${SPRAY_ANIMATION_DURATION_MS}ms` }}
                 >
                   <div className="garden-tool-spray-wrap">
