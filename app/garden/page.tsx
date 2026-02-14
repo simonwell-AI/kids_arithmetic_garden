@@ -517,8 +517,8 @@ export default function GardenPage() {
               {displayGarden.isBloom && " 🌸 已開花"}
             </p>
             <div className="relative h-48 w-48 sm:h-56 sm:w-56">
-              {/* 植物層：獨立 stacking context，z-index 0 確保工具動畫一定在前 */}
-              <div className="absolute inset-0 z-0">
+              {/* 植物層：獨立 stacking context，確保工具動畫一定在前 */}
+              <div className="garden-plant-layer absolute inset-0">
                 <Image
                   src={getSeedGrowthImagePath(displayGarden.seedId, displayGarden.growthStage)}
                   alt=""
@@ -707,10 +707,10 @@ export default function GardenPage() {
               )}
               {animating === "fork" && (
                 <div
-                  className="garden-animate-fork pointer-events-none absolute inset-0 z-[50] overflow-visible"
+                  className="garden-animate-fork garden-fork-layer pointer-events-none absolute inset-0 overflow-visible"
                   style={{ ["--fork-duration" as string]: `${forkAnimationDurationMs}ms` }}
                 >
-                  <div className="garden-tool-fork-wrap relative z-[51]">
+                  <div className="garden-tool-fork-wrap relative">
                     <Image
                       src={GARDEN_FORK_IMAGE}
                       alt=""

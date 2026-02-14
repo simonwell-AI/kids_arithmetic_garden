@@ -663,15 +663,27 @@ body {
   100% { transform: scale(0.6) rotate(90deg); opacity: 0; }
 }
 
+/* 植物層：最底，避免擋住工具動畫 */
+.garden-plant-layer {
+  z-index: 0;
+  isolation: isolate;
+}
+
+/* 鬆土動畫層：強制最前，園藝叉一定可見 */
+.garden-fork-layer {
+  z-index: 9999;
+  isolation: isolate;
+}
+
 .garden-tool-fork-wrap {
   position: absolute;
   top: -2%;
   right: 6%;
   width: 52px;
   height: 52px;
-  z-index: 51;
+  z-index: 1;
   pointer-events: none;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .garden-tool-fork-swing {
