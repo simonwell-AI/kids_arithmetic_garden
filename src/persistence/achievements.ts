@@ -1,8 +1,15 @@
 import { getDB, STORE_ACHIEVEMENTS, ACHIEVEMENTS_KEY, type AchievementRecord } from "./db";
 import { addCoins } from "./wallet";
+import { getStreak } from "./dailyProgress";
 
 /** 解鎖成就時發放的代幣 */
 const UNLOCK_COINS = 2;
+/** 植物收藏家（種過 6 種）解鎖代幣 */
+const PLANTED_6_COINS = 5;
+/** 熟練園丁（收成 10 次）解鎖代幣 */
+const HARVEST_10_COINS = 5;
+/** 今日任務連續 7 天解鎖代幣 */
+const TODAY_STREAK_7_COINS = 5;
 
 function todayDateString(): string {
   const d = new Date();
@@ -34,6 +41,13 @@ async function getAchievementRecord(): Promise<AchievementRecord> {
     bugsRemoved5Unlocked: false,
     weedsTrimmedCount: 0,
     weedsTrimmed3Unlocked: false,
+    planted3Unlocked: false,
+    planted6Unlocked: false,
+    harvestCount: 0,
+    harvest3Unlocked: false,
+    harvest10Unlocked: false,
+    todayStreak3Unlocked: false,
+    todayStreak7Unlocked: false,
     plantedSeedIds: [],
   };
   await db.put(STORE_ACHIEVEMENTS, defaultRecord);
@@ -53,6 +67,15 @@ export interface AchievementState {
   bugsRemoved5Unlocked: boolean;
   weedsTrimmedCount: number;
   weedsTrimmed3Unlocked: boolean;
+  planted3Unlocked: boolean;
+  planted6Unlocked: boolean;
+  plantedSeedCount: number;
+  harvestCount: number;
+  harvest3Unlocked: boolean;
+  harvest10Unlocked: boolean;
+  todayStreak: number;
+  todayStreak3Unlocked: boolean;
+  todayStreak7Unlocked: boolean;
 }
 
 export async function getAchievements(): Promise<AchievementState> {
@@ -65,9 +88,20 @@ export async function getAchievements(): Promise<AchievementState> {
       bugsRemoved5Unlocked: false,
       weedsTrimmedCount: 0,
       weedsTrimmed3Unlocked: false,
+      planted3Unlocked: false,
+      planted6Unlocked: false,
+      plantedSeedCount: 0,
+      harvestCount: 0,
+      harvest3Unlocked: false,
+      harvest10Unlocked: false,
+      todayStreak: 0,
+      todayStreak3Unlocked: false,
+      todayStreak7Unlocked: false,
     };
   }
   const r = await getAchievementRecord();
+  const plantedCount = r.plantedSeedIds?.length ?? 0;
+  const todayStreak = await getStreak();
   return {
     firstBloomUnlocked: r.firstBloomUnlocked,
     gardenStreak7Unlocked: r.gardenStreak7Unlocked,
@@ -76,6 +110,15 @@ export async function getAchievements(): Promise<AchievementState> {
     bugsRemoved5Unlocked: r.bugsRemoved5Unlocked,
     weedsTrimmedCount: r.weedsTrimmedCount,
     weedsTrimmed3Unlocked: r.weedsTrimmed3Unlocked,
+    planted3Unlocked: r.planted3Unlocked ?? false,
+    planted6Unlocked: r.planted6Unlocked ?? false,
+    plantedSeedCount: plantedCount,
+    harvestCount: r.harvestCount ?? 0,
+    harvest3Unlocked: r.harvest3Unlocked ?? false,
+    harvest10Unlocked: r.harvest10Unlocked ?? false,
+    todayStreak,
+    todayStreak3Unlocked: r.todayStreak3Unlocked ?? false,
+    todayStreak7Unlocked: r.todayStreak7Unlocked ?? false,
   };
 }
 
@@ -163,6 +206,73 @@ export async function incrementWeedsTrimmed(): Promise<{ justUnlocked: boolean; 
   return { justUnlocked, coinsAwarded };
 }
 
+/** 開花收成成功時呼叫；達 3 次解鎖豐收、達 10 次解鎖熟練園丁並發代幣 */
+export async function incrementHarvestCount(): Promise<{
+  harvest3JustUnlocked?: boolean;
+  harvest10JustUnlocked?: boolean;
+  coinsAwarded: number;
+}> {
+  if (typeof window === "undefined") return { coinsAwarded: 0 };
+  const r = await getAchievementRecord();
+  r.harvestCount = (r.harvestCount ?? 0) + 1;
+  let coinsAwarded = 0;
+  let harvest3JustUnlocked = false;
+  let harvest10JustUnlocked = false;
+  if (r.harvestCount >= 3 && !(r.harvest3Unlocked ?? false)) {
+    r.harvest3Unlocked = true;
+    r.harvest3UnlockedAt = Date.now();
+    await addCoins(UNLOCK_COINS);
+    coinsAwarded += UNLOCK_COINS;
+    harvest3JustUnlocked = true;
+  }
+  if (r.harvestCount >= 10 && !(r.harvest10Unlocked ?? false)) {
+    r.harvest10Unlocked = true;
+    r.harvest10UnlockedAt = Date.now();
+    await addCoins(HARVEST_10_COINS);
+    coinsAwarded += HARVEST_10_COINS;
+    harvest10JustUnlocked = true;
+  }
+  await saveAchievements(r);
+  return {
+    ...(harvest3JustUnlocked && { harvest3JustUnlocked: true }),
+    ...(harvest10JustUnlocked && { harvest10JustUnlocked: true }),
+    coinsAwarded,
+  };
+}
+
+/** 今日任務完成領獎時呼叫（傳入當時的連續天數）；達 3 天／7 天解鎖成就並發代幣 */
+export async function checkTodayStreakAchievements(streak: number): Promise<{
+  todayStreak3JustUnlocked?: boolean;
+  todayStreak7JustUnlocked?: boolean;
+  coinsAwarded: number;
+}> {
+  if (typeof window === "undefined") return { coinsAwarded: 0 };
+  const r = await getAchievementRecord();
+  let coinsAwarded = 0;
+  let todayStreak3JustUnlocked = false;
+  let todayStreak7JustUnlocked = false;
+  if (streak >= 3 && !(r.todayStreak3Unlocked ?? false)) {
+    r.todayStreak3Unlocked = true;
+    r.todayStreak3UnlockedAt = Date.now();
+    await addCoins(UNLOCK_COINS);
+    coinsAwarded += UNLOCK_COINS;
+    todayStreak3JustUnlocked = true;
+  }
+  if (streak >= 7 && !(r.todayStreak7Unlocked ?? false)) {
+    r.todayStreak7Unlocked = true;
+    r.todayStreak7UnlockedAt = Date.now();
+    await addCoins(TODAY_STREAK_7_COINS);
+    coinsAwarded += TODAY_STREAK_7_COINS;
+    todayStreak7JustUnlocked = true;
+  }
+  if (coinsAwarded > 0) await saveAchievements(r);
+  return {
+    ...(todayStreak3JustUnlocked && { todayStreak3JustUnlocked: true }),
+    ...(todayStreak7JustUnlocked && { todayStreak7JustUnlocked: true }),
+    coinsAwarded,
+  };
+}
+
 /** 取得曾種過的種子 ID 列表（商店用於不販賣已種過的種子） */
 export async function getPlantedSeedIds(): Promise<string[]> {
   if (typeof window === "undefined") return [];
@@ -170,13 +280,40 @@ export async function getPlantedSeedIds(): Promise<string[]> {
   return r.plantedSeedIds ?? [];
 }
 
-/** 記錄曾種過此種子（種植成功時呼叫） */
-export async function addPlantedSeedId(seedId: string): Promise<void> {
-  if (typeof window === "undefined") return;
+/** 記錄曾種過此種子（種植成功時呼叫）；若解鎖小園丁／植物收藏家則發代幣並回傳 */
+export async function addPlantedSeedId(seedId: string): Promise<{
+  planted3JustUnlocked?: boolean;
+  planted6JustUnlocked?: boolean;
+  coinsAwarded: number;
+}> {
+  if (typeof window === "undefined") return { coinsAwarded: 0 };
   const r = await getAchievementRecord();
   if (!r.plantedSeedIds) r.plantedSeedIds = [];
   if (!r.plantedSeedIds.includes(seedId)) {
     r.plantedSeedIds.push(seedId);
+    let coinsAwarded = 0;
+    let planted3JustUnlocked = false;
+    let planted6JustUnlocked = false;
+    if (r.plantedSeedIds.length >= 3 && !(r.planted3Unlocked ?? false)) {
+      r.planted3Unlocked = true;
+      r.planted3UnlockedAt = Date.now();
+      await addCoins(UNLOCK_COINS);
+      coinsAwarded += UNLOCK_COINS;
+      planted3JustUnlocked = true;
+    }
+    if (r.plantedSeedIds.length >= 6 && !(r.planted6Unlocked ?? false)) {
+      r.planted6Unlocked = true;
+      r.planted6UnlockedAt = Date.now();
+      await addCoins(PLANTED_6_COINS);
+      coinsAwarded += PLANTED_6_COINS;
+      planted6JustUnlocked = true;
+    }
     await saveAchievements(r);
+    return {
+      ...(planted3JustUnlocked && { planted3JustUnlocked: true }),
+      ...(planted6JustUnlocked && { planted6JustUnlocked: true }),
+      coinsAwarded,
+    };
   }
+  return { coinsAwarded: 0 };
 }

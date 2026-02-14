@@ -125,10 +125,17 @@ export default function TodayTaskPage() {
       }
     }
     if (reward?.claimed && reward.rewardAmount > 0) {
-      const coinMsg =
+      let coinMsg =
         reward.streakBonus > 0
           ? `今日任務完成！獲得 ${reward.rewardAmount} 代幣！（含連續 7 天獎勵 +${reward.streakBonus}）`
           : `今日任務完成！獲得 ${reward.rewardAmount} 代幣！`;
+      const achievementUnlock = reward && "achievementUnlock" in reward ? (reward as { achievementUnlock?: { todayStreak3JustUnlocked?: boolean; todayStreak7JustUnlocked?: boolean; coinsAwarded: number } }).achievementUnlock : undefined;
+      if (achievementUnlock && achievementUnlock.coinsAwarded > 0) {
+        const names: string[] = [];
+        if (achievementUnlock.todayStreak3JustUnlocked) names.push("今日任務連續 3 天");
+        if (achievementUnlock.todayStreak7JustUnlocked) names.push("今日任務連續 7 天");
+        coinMsg += ` 成就解鎖：${names.join("、")}！獲得 ${achievementUnlock.coinsAwarded} 代幣。`;
+      }
       const fertilizerMsg = reward.fertilizerAwarded ? `，以及一般肥料 ×${reward.fertilizerAwarded}` : "";
       setRewardMessage(coinMsg + fertilizerMsg);
       setTimeout(() => setRewardMessage(null), 4000);

@@ -669,7 +669,7 @@ body {
   right: 6%;
   width: 52px;
   height: 52px;
-  z-index: 22;
+  z-index: 51;
   pointer-events: none;
   overflow: hidden;
 }

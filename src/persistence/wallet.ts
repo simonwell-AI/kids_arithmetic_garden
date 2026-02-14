@@ -2,9 +2,9 @@ import { getDB, STORE_WALLET, WALLET_KEY, type WalletRecord } from "./db";
 import { getStreak } from "./dailyProgress";
 
 /** 今日任務完成代幣（較多） */
-const DAILY_REWARD_COINS = 10;
+const DAILY_REWARD_COINS = 25;
 /** 連續 7 天完成今日任務的額外代幣 */
-const STREAK_7_BONUS_COINS = 10;
+const STREAK_7_BONUS_COINS = 25;
 /** 練習／速度測驗答對 80% 以上完成時發放的代幣 */
 const COMPLETION_REWARD_COINS = 2;
 /** 答對率門檻（含）才發放完成獎勵 */

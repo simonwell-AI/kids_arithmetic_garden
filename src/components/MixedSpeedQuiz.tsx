@@ -7,6 +7,7 @@ import { FeedbackToast } from "@/src/components/FeedbackToast";
 import type { Question } from "@/src/generator";
 import { generateQuestions } from "@/src/generator";
 import { playFeedbackSound } from "@/src/lib/sound";
+import { addWater } from "@/src/persistence/inventory";
 import { awardCustomCompletionReward } from "@/src/persistence/wallet";
 
 const DURATION_MS = 60 * 1000;
@@ -61,8 +62,11 @@ export function MixedSpeedQuiz({ onBack }: MixedSpeedQuizProps) {
     const totalAnswered = index + (showFeedback ? 0 : 1);
     if (totalAnswered < 1) return;
     hasAwardedRef.current = true;
-    awardCustomCompletionReward(correctCount, totalAnswered, 6).then((result) => {
-      if (result.awarded) setRewardCoins(result.amount);
+    awardCustomCompletionReward(correctCount, totalAnswered, 6).then(async (result) => {
+      if (result.awarded) {
+        setRewardCoins(result.amount);
+        await addWater(1);
+      }
     });
   }, [phase, index, showFeedback, correctCount]);
 
@@ -116,7 +120,7 @@ export function MixedSpeedQuiz({ onBack }: MixedSpeedQuizProps) {
           綜合題速度測驗（60 秒）
         </h2>
         <p className="text-center text-gray-600">
-          60 秒內盡量答對更多加減乘除題，成功率 80% 給 6 代幣
+          60 秒內盡量答對更多加減乘除題，成功率 80% 給 6 代幣＋1 瓶水
         </p>
         {genError && (
           <p className="rounded-xl bg-rose-100 px-4 py-2 text-center text-sm font-semibold text-rose-800">
@@ -159,7 +163,7 @@ export function MixedSpeedQuiz({ onBack }: MixedSpeedQuizProps) {
         <p className="text-gray-600">正確率 {accuracy}%</p>
         {rewardCoins != null && rewardCoins > 0 && (
           <p className="rounded-xl bg-amber-100 px-4 py-2 text-center text-base font-bold text-amber-900">
-            🪙 答對 80% 以上，獲得 {rewardCoins} 代幣！
+            🪙 答對 80% 以上，獲得 {rewardCoins} 代幣與 1 瓶水！
           </p>
         )}
         <div className="flex flex-wrap items-center justify-center gap-3">

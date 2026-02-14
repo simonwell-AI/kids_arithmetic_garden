@@ -1,9 +1,11 @@
 import {
   incrementTodayProgress,
   MIN_CORRECT_FOR_TODAY_REWARD,
+  getStreak,
 } from "./dailyProgress";
 import { addFertilizerBasic } from "./inventory";
 import { claimDailyRewardIfEligible } from "./wallet";
+import { checkTodayStreakAchievements } from "./achievements";
 
 export async function advanceDailyProgressAndClaimReward(correct: boolean): Promise<{
   completed: number;
@@ -28,7 +30,16 @@ export async function advanceDailyProgressAndClaimReward(correct: boolean): Prom
     if (meetsThreshold) {
       const reward = await claimDailyRewardIfEligible();
       await addFertilizerBasic(1);
-      return { ...progress, reward: { ...reward, fertilizerAwarded: 1 } };
+      const streak = await getStreak();
+      const achievementUnlock = await checkTodayStreakAchievements(streak);
+      return {
+        ...progress,
+        reward: {
+          ...reward,
+          fertilizerAwarded: 1,
+          ...(achievementUnlock.coinsAwarded > 0 && { achievementUnlock }),
+        },
+      };
     }
     return {
       ...progress,

@@ -246,7 +246,7 @@ export default function DrillPage() {
                 onClick={() => setPhase("mixedSpeed")}
                 className="min-h-[56px] rounded-2xl bg-amber-400 px-6 py-4 text-lg font-bold text-amber-950 shadow transition hover:bg-amber-500 active:scale-[0.98] touch-manipulation"
               >
-                綜合題速度測驗（成功率 80% 給 6 代幣）
+                綜合題速度測驗（成功率 80% 給 6 代幣＋1 瓶水）
               </button>
               <button
                 type="button"

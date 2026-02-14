@@ -14,7 +14,7 @@ import { addPlantedSeedId } from "./achievements";
 
 const MAX_GROWTH_STAGE = 4; // 0..4, 4 = 開花
 /** 開花後收成發放的代幣 */
-const HARVEST_BLOOM_COINS = 8;
+const HARVEST_BLOOM_COINS = 25;
 const GROWTH_PER_DAY_WATER = 0.2;
 const GROWTH_PER_DAY_FERTILIZER_BASIC = 0.3;
 const GROWTH_PER_DAY_FERTILIZER_PREMIUM = 0.5;
@@ -169,7 +169,11 @@ export async function getGarden(): Promise<{
 }
 
 /** 種植：消耗一顆種子，建立花園記錄 */
-export async function plantSeed(seedId: string): Promise<{ success: boolean; message?: string }> {
+export async function plantSeed(seedId: string): Promise<{
+  success: boolean;
+  message?: string;
+  achievementUnlock?: { planted3JustUnlocked?: boolean; planted6JustUnlocked?: boolean; coinsAwarded: number };
+}> {
   if (typeof window === "undefined") return { success: false, message: "僅支援瀏覽器" };
   const existing = await getGardenRecord();
   if (existing) return { success: false, message: "已有植物，請先收成或等待開花後再種" };
@@ -182,8 +186,11 @@ export async function plantSeed(seedId: string): Promise<{ success: boolean; mes
     growthValue: 0,
   };
   await saveGarden(record);
-  await addPlantedSeedId(seedId);
-  return { success: true };
+  const achievementUnlock = await addPlantedSeedId(seedId);
+  return {
+    success: true,
+    ...(achievementUnlock.coinsAwarded > 0 && { achievementUnlock }),
+  };
 }
 
 /** 澆水：消耗 1 水，更新 lastWateredAt */

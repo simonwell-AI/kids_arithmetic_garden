@@ -116,6 +116,26 @@ export interface AchievementRecord {
   /** 剪雜草 3 次 */
   weedsTrimmed3Unlocked: boolean;
   weedsTrimmed3UnlockedAt?: number;
+  /** 小園丁：種過 3 種不同植物 */
+  planted3Unlocked?: boolean;
+  planted3UnlockedAt?: number;
+  /** 植物收藏家：種過 6 種不同植物 */
+  planted6Unlocked?: boolean;
+  planted6UnlockedAt?: number;
+  /** 收成次數累計（開花收成） */
+  harvestCount?: number;
+  /** 豐收：收成 3 次 */
+  harvest3Unlocked?: boolean;
+  harvest3UnlockedAt?: number;
+  /** 熟練園丁：收成 10 次 */
+  harvest10Unlocked?: boolean;
+  harvest10UnlockedAt?: number;
+  /** 今日任務連續 3 天 */
+  todayStreak3Unlocked?: boolean;
+  todayStreak3UnlockedAt?: number;
+  /** 今日任務連續 7 天 */
+  todayStreak7Unlocked?: boolean;
+  todayStreak7UnlockedAt?: number;
   /** 曾種過的種子 ID 列表（商店不再販賣） */
   plantedSeedIds?: string[];
 }

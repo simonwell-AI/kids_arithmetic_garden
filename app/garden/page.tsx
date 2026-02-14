@@ -25,6 +25,7 @@ import {
   unlockFirstBloom,
   incrementBugsRemoved,
   incrementWeedsTrimmed,
+  incrementHarvestCount,
   type AchievementState,
 } from "@/src/persistence/achievements";
 import { getSeedGrowthImagePath, SEED_NAMES } from "@/src/garden/assets";
@@ -203,7 +204,14 @@ export default function GardenPage() {
     async (seedId: string) => {
       const result = await plantSeed(seedId);
       if (result.success) {
-        showMessage("種植成功！");
+        if (result.achievementUnlock && result.achievementUnlock.coinsAwarded > 0) {
+          const names: string[] = [];
+          if (result.achievementUnlock.planted3JustUnlocked) names.push("小園丁");
+          if (result.achievementUnlock.planted6JustUnlocked) names.push("植物收藏家");
+          showMessage(`成就解鎖：${names.join("、")}！獲得 ${result.achievementUnlock.coinsAwarded} 代幣`);
+        } else {
+          showMessage("種植成功！");
+        }
         load();
         setPlantingSeedId(null);
       } else {
@@ -405,9 +413,16 @@ export default function GardenPage() {
       let harvestMessage: string;
       if (result.coinsAwarded != null) {
         const bloomAch = await unlockFirstBloom();
+        const harvestAch = await incrementHarvestCount();
         harvestMessage = bloomAch.justUnlocked && bloomAch.coinsAwarded > 0
           ? `成就解鎖：第一次開花！獲得 ${bloomAch.coinsAwarded} 代幣。收成獲得 ${result.coinsAwarded} 代幣～`
           : `獲得 ${result.coinsAwarded} 代幣！收成完成，可以再種新種子～`;
+        if (harvestAch.coinsAwarded > 0) {
+          const names: string[] = [];
+          if (harvestAch.harvest3JustUnlocked) names.push("豐收");
+          if (harvestAch.harvest10JustUnlocked) names.push("熟練園丁");
+          harvestMessage += ` 成就解鎖：${names.join("、")}！獲得 ${harvestAch.coinsAwarded} 代幣。`;
+        }
       } else {
         harvestMessage = "收成完成，可以再種新種子～";
       }
@@ -438,70 +453,6 @@ export default function GardenPage() {
           <p className="rounded-xl bg-amber-100 px-4 py-2 text-center font-semibold text-amber-900 shadow-sm" role="status">
             {message}
           </p>
-        )}
-        {achievements && (
-          <div className="w-full rounded-2xl border border-amber-200 bg-amber-50/80 p-3 sm:p-4">
-            <h2 className="mb-2 text-center text-sm font-bold text-amber-900 sm:text-base">🏅 成就徽章</h2>
-            <div className="grid grid-cols-2 gap-2 sm:gap-3">
-              <div
-                className={`rounded-xl border-2 px-3 py-2 text-center text-xs sm:text-sm ${
-                  achievements.firstBloomUnlocked
-                    ? "border-amber-400 bg-amber-100 text-amber-900"
-                    : "border-gray-200 bg-white/60 text-gray-500"
-                }`}
-                title="第一次開花：收成開花株"
-              >
-                <span className="font-semibold">🌸 第一次開花</span>
-                {achievements.firstBloomUnlocked && <span className="ml-1">✓</span>}
-              </div>
-              <div
-                className={`rounded-xl border-2 px-3 py-2 text-center text-xs sm:text-sm ${
-                  achievements.gardenStreak7Unlocked
-                    ? "border-amber-400 bg-amber-100 text-amber-900"
-                    : "border-gray-200 bg-white/60 text-gray-500"
-                }`}
-                title="連續 7 天進花園"
-              >
-                <span className="font-semibold">📅 連續 7 天進花園</span>
-                {achievements.gardenStreak7Unlocked ? (
-                  <span className="ml-1">✓</span>
-                ) : (
-                  <span className="block text-xs">({achievements.gardenConsecutiveDays}/7 天)</span>
-                )}
-              </div>
-              <div
-                className={`rounded-xl border-2 px-3 py-2 text-center text-xs sm:text-sm ${
-                  achievements.bugsRemoved5Unlocked
-                    ? "border-amber-400 bg-amber-100 text-amber-900"
-                    : "border-gray-200 bg-white/60 text-gray-500"
-                }`}
-                title="除蟲 5 次"
-              >
-                <span className="font-semibold">🐛 除蟲 5 次</span>
-                {achievements.bugsRemoved5Unlocked ? (
-                  <span className="ml-1">✓</span>
-                ) : (
-                  <span className="block text-xs">({achievements.bugsRemovedCount}/5)</span>
-                )}
-              </div>
-              <div
-                className={`rounded-xl border-2 px-3 py-2 text-center text-xs sm:text-sm ${
-                  achievements.weedsTrimmed3Unlocked
-                    ? "border-amber-400 bg-amber-100 text-amber-900"
-                    : "border-gray-200 bg-white/60 text-gray-500"
-                }`}
-                title="剪雜草 3 次"
-              >
-                <span className="font-semibold">✂️ 剪雜草 3 次</span>
-                {achievements.weedsTrimmed3Unlocked ? (
-                  <span className="ml-1">✓</span>
-                ) : (
-                  <span className="block text-xs">({achievements.weedsTrimmedCount}/3)</span>
-                )}
-              </div>
-            </div>
-            <p className="mt-2 text-center text-xs text-amber-800">解鎖成就可獲得 2 代幣</p>
-          </div>
         )}
         {!garden && (
           <div className="flex flex-col items-center gap-5 rounded-3xl border-2 border-green-200 bg-white/90 p-6 shadow-lg">
@@ -566,13 +517,16 @@ export default function GardenPage() {
               {displayGarden.isBloom && " 🌸 已開花"}
             </p>
             <div className="relative h-48 w-48 sm:h-56 sm:w-56">
-              <Image
-                src={getSeedGrowthImagePath(displayGarden.seedId, displayGarden.growthStage)}
-                alt=""
-                fill
-                className={`object-contain ${isHarvesting ? "garden-harvest-plant-exit" : "garden-plant-sway"}`}
-                unoptimized
-              />
+              {/* 植物層：獨立 stacking context，z-index 0 確保工具動畫一定在前 */}
+              <div className="absolute inset-0 z-0">
+                <Image
+                  src={getSeedGrowthImagePath(displayGarden.seedId, displayGarden.growthStage)}
+                  alt=""
+                  fill
+                  className={`object-contain ${isHarvesting ? "garden-harvest-plant-exit" : "garden-plant-sway"}`}
+                  unoptimized
+                />
+              </div>
               {/* 開花瞬間：花苞位置光團放大＋淡出 */}
               {garden && showBloomFlash && <span className="garden-bloom-flash" aria-hidden />}
               {/* 土壤層：始終存在，高度不超過雜草底，僅一薄條地面 */}
@@ -753,10 +707,10 @@ export default function GardenPage() {
               )}
               {animating === "fork" && (
                 <div
-                  className="garden-animate-fork pointer-events-none absolute inset-0 z-[20] overflow-visible"
+                  className="garden-animate-fork pointer-events-none absolute inset-0 z-[50] overflow-visible"
                   style={{ ["--fork-duration" as string]: `${forkAnimationDurationMs}ms` }}
                 >
-                  <div className="garden-tool-fork-wrap relative">
+                  <div className="garden-tool-fork-wrap relative z-[51]">
                     <Image
                       src={GARDEN_FORK_IMAGE}
                       alt=""
@@ -1272,6 +1226,160 @@ export default function GardenPage() {
           </div>
           );
         })()}
+        {achievements && (
+          <div className="w-full rounded-2xl border border-amber-200 bg-amber-50/80 p-3 sm:p-4">
+            <h2 className="mb-2 text-center text-sm font-bold text-amber-900 sm:text-base">🏅 成就徽章</h2>
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              <div
+                className={`rounded-xl border-2 px-3 py-2 text-center text-xs sm:text-sm ${
+                  achievements.firstBloomUnlocked
+                    ? "border-amber-400 bg-amber-100 text-amber-900"
+                    : "border-gray-200 bg-white/60 text-gray-500"
+                }`}
+                title="第一次開花：收成開花株"
+              >
+                <span className="font-semibold">🌸 第一次開花</span>
+                {achievements.firstBloomUnlocked && <span className="ml-1">✓</span>}
+              </div>
+              <div
+                className={`rounded-xl border-2 px-3 py-2 text-center text-xs sm:text-sm ${
+                  achievements.gardenStreak7Unlocked
+                    ? "border-amber-400 bg-amber-100 text-amber-900"
+                    : "border-gray-200 bg-white/60 text-gray-500"
+                }`}
+                title="連續 7 天進花園"
+              >
+                <span className="font-semibold">📅 連續 7 天進花園</span>
+                {achievements.gardenStreak7Unlocked ? (
+                  <span className="ml-1">✓</span>
+                ) : (
+                  <span className="block text-xs">({achievements.gardenConsecutiveDays}/7 天)</span>
+                )}
+              </div>
+              <div
+                className={`rounded-xl border-2 px-3 py-2 text-center text-xs sm:text-sm ${
+                  achievements.bugsRemoved5Unlocked
+                    ? "border-amber-400 bg-amber-100 text-amber-900"
+                    : "border-gray-200 bg-white/60 text-gray-500"
+                }`}
+                title="除蟲 5 次"
+              >
+                <span className="font-semibold">🐛 除蟲 5 次</span>
+                {achievements.bugsRemoved5Unlocked ? (
+                  <span className="ml-1">✓</span>
+                ) : (
+                  <span className="block text-xs">({achievements.bugsRemovedCount}/5)</span>
+                )}
+              </div>
+              <div
+                className={`rounded-xl border-2 px-3 py-2 text-center text-xs sm:text-sm ${
+                  achievements.weedsTrimmed3Unlocked
+                    ? "border-amber-400 bg-amber-100 text-amber-900"
+                    : "border-gray-200 bg-white/60 text-gray-500"
+                }`}
+                title="剪雜草 3 次"
+              >
+                <span className="font-semibold">✂️ 剪雜草 3 次</span>
+                {achievements.weedsTrimmed3Unlocked ? (
+                  <span className="ml-1">✓</span>
+                ) : (
+                  <span className="block text-xs">({achievements.weedsTrimmedCount}/3)</span>
+                )}
+              </div>
+              <div
+                className={`rounded-xl border-2 px-3 py-2 text-center text-xs sm:text-sm ${
+                  achievements.planted3Unlocked
+                    ? "border-amber-400 bg-amber-100 text-amber-900"
+                    : "border-gray-200 bg-white/60 text-gray-500"
+                }`}
+                title="小園丁：種過 3 種不同植物"
+              >
+                <span className="font-semibold">🌱 小園丁</span>
+                {achievements.planted3Unlocked ? (
+                  <span className="ml-1">✓</span>
+                ) : (
+                  <span className="block text-xs">(種過 {achievements.plantedSeedCount}/3 種)</span>
+                )}
+              </div>
+              <div
+                className={`rounded-xl border-2 px-3 py-2 text-center text-xs sm:text-sm ${
+                  achievements.planted6Unlocked
+                    ? "border-amber-400 bg-amber-100 text-amber-900"
+                    : "border-gray-200 bg-white/60 text-gray-500"
+                }`}
+                title="植物收藏家：種過 6 種不同植物"
+              >
+                <span className="font-semibold">🌿 植物收藏家</span>
+                {achievements.planted6Unlocked ? (
+                  <span className="ml-1">✓</span>
+                ) : (
+                  <span className="block text-xs">(種過 {achievements.plantedSeedCount}/6 種)</span>
+                )}
+              </div>
+              <div
+                className={`rounded-xl border-2 px-3 py-2 text-center text-xs sm:text-sm ${
+                  achievements.harvest3Unlocked
+                    ? "border-amber-400 bg-amber-100 text-amber-900"
+                    : "border-gray-200 bg-white/60 text-gray-500"
+                }`}
+                title="豐收：收成 3 次"
+              >
+                <span className="font-semibold">🌾 豐收</span>
+                {achievements.harvest3Unlocked ? (
+                  <span className="ml-1">✓</span>
+                ) : (
+                  <span className="block text-xs">({achievements.harvestCount}/3 次)</span>
+                )}
+              </div>
+              <div
+                className={`rounded-xl border-2 px-3 py-2 text-center text-xs sm:text-sm ${
+                  achievements.harvest10Unlocked
+                    ? "border-amber-400 bg-amber-100 text-amber-900"
+                    : "border-gray-200 bg-white/60 text-gray-500"
+                }`}
+                title="熟練園丁：收成 10 次"
+              >
+                <span className="font-semibold">👨‍🌾 熟練園丁</span>
+                {achievements.harvest10Unlocked ? (
+                  <span className="ml-1">✓</span>
+                ) : (
+                  <span className="block text-xs">({achievements.harvestCount}/10 次)</span>
+                )}
+              </div>
+              <div
+                className={`rounded-xl border-2 px-3 py-2 text-center text-xs sm:text-sm ${
+                  achievements.todayStreak3Unlocked
+                    ? "border-amber-400 bg-amber-100 text-amber-900"
+                    : "border-gray-200 bg-white/60 text-gray-500"
+                }`}
+                title="今日任務連續 3 天"
+              >
+                <span className="font-semibold">📋 今日任務連續 3 天</span>
+                {achievements.todayStreak3Unlocked ? (
+                  <span className="ml-1">✓</span>
+                ) : (
+                  <span className="block text-xs">(連續 {achievements.todayStreak}/3 天)</span>
+                )}
+              </div>
+              <div
+                className={`rounded-xl border-2 px-3 py-2 text-center text-xs sm:text-sm ${
+                  achievements.todayStreak7Unlocked
+                    ? "border-amber-400 bg-amber-100 text-amber-900"
+                    : "border-gray-200 bg-white/60 text-gray-500"
+                }`}
+                title="今日任務連續 7 天"
+              >
+                <span className="font-semibold">📋 今日任務連續 7 天</span>
+                {achievements.todayStreak7Unlocked ? (
+                  <span className="ml-1">✓</span>
+                ) : (
+                  <span className="block text-xs">(連續 {achievements.todayStreak}/7 天)</span>
+                )}
+              </div>
+            </div>
+            <p className="mt-2 text-center text-xs text-amber-800">解鎖成就可獲得 2～5 代幣</p>
+          </div>
+        )}
       </div>
     </div>
   );
