@@ -9,6 +9,7 @@ import {
   water,
   fertilize,
   harvest,
+  clearGardenWithoutHarvest,
   trimWeeds,
   loosenSoil,
   mistPlant,
@@ -122,6 +123,10 @@ export default function GardenPage() {
   /** 上一筆成長階段，用於偵測「剛開花」 */
   const prevStageRef = useRef<number | null>(null);
   const [achievements, setAchievements] = useState<AchievementState | null>(null);
+  /** 變更植物：選單與確認視窗 */
+  const [showChangePlantModal, setShowChangePlantModal] = useState(false);
+  const [changePlantSelectedSeedId, setChangePlantSelectedSeedId] = useState<string | null>(null);
+  const [changePlantConfirming, setChangePlantConfirming] = useState(false);
 
   const wateringCanImagePath = useMemo(
     () => getWateringCanImagePath(inventory?.wateringCans),
@@ -439,6 +444,27 @@ export default function GardenPage() {
     }
   }, [load, garden]);
 
+  const handleChangePlantConfirm = useCallback(async () => {
+    if (!changePlantSelectedSeedId) return;
+    const clearResult = await clearGardenWithoutHarvest();
+    if (!clearResult.success) {
+      showMessage(clearResult.message ?? "清除失敗");
+      return;
+    }
+    const plantResult = await plantSeed(changePlantSelectedSeedId);
+    if (plantResult.success) {
+      showMessage(`已改種為 ${SEED_NAMES[changePlantSelectedSeedId] ?? changePlantSelectedSeedId}`);
+      setShowChangePlantModal(false);
+      setChangePlantSelectedSeedId(null);
+      setChangePlantConfirming(false);
+      load();
+    } else {
+      showMessage(plantResult.message ?? "種植失敗");
+    }
+  }, [changePlantSelectedSeedId, load]);
+
+  const SEED_IDS = ["pink_flower", "sun_flower", "tomato", "rose", "brocoli", "tulip", "Lavender", "daffodils"];
+
   return (
     <div className="flex min-h-[100dvh] flex-col items-center bg-[var(--background)] px-4 py-8 sm:px-6 sm:py-10">
       {showCelebration && <CelebrationParticles />}
@@ -482,7 +508,7 @@ export default function GardenPage() {
               </div>
             ) : (
               <div className="flex flex-wrap justify-center gap-4">
-                {["pink_flower", "sun_flower", "tomato", "rose", "brocoli", "tulip"].map((seedId) => (
+                {["pink_flower", "sun_flower", "tomato", "rose", "brocoli", "tulip", "Lavender", "daffodils"].map((seedId) => (
                   <button
                     key={seedId}
                     type="button"
@@ -1214,6 +1240,19 @@ export default function GardenPage() {
                 )}
               </div>
             )}
+            {garden && !isHarvesting && (
+              <button
+                type="button"
+                onClick={() => {
+                  setChangePlantSelectedSeedId(null);
+                  setChangePlantConfirming(false);
+                  setShowChangePlantModal(true);
+                }}
+                className="min-h-[48px] rounded-2xl border-2 border-amber-300 bg-amber-50 px-6 font-bold text-amber-800 shadow-sm hover:bg-amber-100 active:scale-[0.98]"
+              >
+                🔄 變更植物
+              </button>
+            )}
             {garden?.isBloom && !isHarvesting && (
               <button
                 type="button"
@@ -1378,6 +1417,102 @@ export default function GardenPage() {
               </div>
             </div>
             <p className="mt-2 text-center text-xs text-amber-800">解鎖成就可獲得 2～5 代幣</p>
+          </div>
+        )}
+        {/* 變更植物：選單 + 確認視窗 */}
+        {showChangePlantModal && (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="change-plant-title"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowChangePlantModal(false);
+                setChangePlantSelectedSeedId(null);
+                setChangePlantConfirming(false);
+              }
+            }}
+          >
+            <div className="w-full max-w-sm rounded-3xl border-2 border-amber-200 bg-white p-6 shadow-xl">
+              <h2 id="change-plant-title" className="mb-4 text-center text-lg font-bold text-[var(--foreground)]">
+                🔄 變更植物
+              </h2>
+              {!changePlantSelectedSeedId ? (
+                <>
+                  <p className="mb-3 text-center text-sm text-gray-600">選擇要改種的種子（目前植物將消失，無法復原）</p>
+                  <div className="flex flex-wrap justify-center gap-3">
+                    {SEED_IDS.filter((id) => ((inventory?.seeds ?? {})[id] ?? 0) >= 1).map((seedId) => (
+                      <button
+                        key={seedId}
+                        type="button"
+                        onClick={() => setChangePlantSelectedSeedId(seedId)}
+                        className="flex flex-col items-center gap-1 rounded-2xl border-2 border-green-200 bg-green-50/80 p-3 transition hover:border-green-400 hover:bg-green-100"
+                      >
+                        <div className="relative h-12 w-12">
+                          <Image
+                            src={getSeedGrowthImagePath(seedId, 0)}
+                            alt=""
+                            fill
+                            className="object-contain"
+                            unoptimized
+                          />
+                        </div>
+                        <span className="text-sm font-bold text-[var(--foreground)]">{SEED_NAMES[seedId] ?? seedId}</span>
+                        <span className="text-xs text-gray-500">× {(inventory?.seeds ?? {})[seedId] ?? 0}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {SEED_IDS.every((id) => ((inventory?.seeds ?? {})[id] ?? 0) < 1) && (
+                    <p className="mt-3 text-center text-sm text-amber-700">背包沒有其他種子，請先到商店購買</p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p className="mb-4 text-center text-sm text-gray-700">
+                    確定要改種嗎？<strong>目前的植物會消失，無法復原。</strong>
+                    <br />
+                    將改種為：<span className="font-bold text-green-700">{SEED_NAMES[changePlantSelectedSeedId] ?? changePlantSelectedSeedId}</span>
+                  </p>
+                  <div className="flex justify-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setChangePlantConfirming(true);
+                        void handleChangePlantConfirm();
+                      }}
+                      disabled={changePlantConfirming}
+                      className="min-h-[44px] rounded-2xl bg-[var(--primary)] px-6 font-bold text-white shadow-md hover:bg-[var(--primary-hover)] disabled:opacity-60"
+                    >
+                      {changePlantConfirming ? "處理中…" : "確定"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setChangePlantSelectedSeedId(null);
+                      }}
+                      disabled={changePlantConfirming}
+                      className="min-h-[44px] rounded-2xl border-2 border-gray-300 px-6 font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                    >
+                      返回
+                    </button>
+                  </div>
+                </>
+              )}
+              <div className="mt-4 text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowChangePlantModal(false);
+                    setChangePlantSelectedSeedId(null);
+                    setChangePlantConfirming(false);
+                  }}
+                  className="text-sm font-medium text-gray-500 underline hover:text-gray-700"
+                >
+                  關閉
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

@@ -249,6 +249,16 @@ export async function harvest(): Promise<{ success: boolean; message?: string; c
   return { success: true, coinsAwarded };
 }
 
+/** 清除花園（不收成、不發代幣）：用於「變更植物」時捨棄目前植物，原種子不會退還 */
+export async function clearGardenWithoutHarvest(): Promise<{ success: boolean; message?: string }> {
+  if (typeof window === "undefined") return { success: false, message: "僅支援瀏覽器" };
+  const record = await getGardenRecord();
+  if (!record) return { success: false, message: "尚未種植" };
+  const db = await getDB();
+  await db.delete(STORE_GARDEN, GARDEN_KEY);
+  return { success: true };
+}
+
 /** 修剪雜草：需要園藝剪刀，清除雜草並給少量成長；每 3 小時可剪一次 */
 export async function trimWeeds(): Promise<{ success: boolean; message?: string }> {
   if (typeof window === "undefined") return { success: false, message: "僅支援瀏覽器" };
