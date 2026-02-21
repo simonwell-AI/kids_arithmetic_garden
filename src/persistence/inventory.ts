@@ -204,3 +204,77 @@ export async function useSeed(seedId: string): Promise<boolean> {
   await (await getDB()).put(STORE_INVENTORY, inv);
   return true;
 }
+
+/** 丟掉背包物品（不退款）。各 remove 將數量減少 count，最少為 0。 */
+
+export async function removeWater(count: number = 1): Promise<void> {
+  if (typeof window === "undefined") return;
+  const inv = normalizeInv(await getInventory());
+  inv.water = Math.max(0, inv.water - count);
+  await (await getDB()).put(STORE_INVENTORY, inv);
+}
+
+export async function removeFertilizerBasic(count: number = 1): Promise<void> {
+  if (typeof window === "undefined") return;
+  const inv = normalizeInv(await getInventory());
+  inv.fertilizerBasic = Math.max(0, inv.fertilizerBasic - count);
+  await (await getDB()).put(STORE_INVENTORY, inv);
+}
+
+export async function removeFertilizerPremium(count: number = 1): Promise<void> {
+  if (typeof window === "undefined") return;
+  const inv = normalizeInv(await getInventory());
+  inv.fertilizerPremium = Math.max(0, inv.fertilizerPremium - count);
+  await (await getDB()).put(STORE_INVENTORY, inv);
+}
+
+export async function removeInsecticide(count: number = 1): Promise<void> {
+  if (typeof window === "undefined") return;
+  const inv = normalizeInv(await getInventory());
+  inv.insecticide = Math.max(0, (inv.insecticide ?? 0) - count);
+  await (await getDB()).put(STORE_INVENTORY, inv);
+}
+
+export async function removeSeed(seedId: string, count: number = 1): Promise<void> {
+  if (typeof window === "undefined") return;
+  const inv = normalizeInv(await getInventory());
+  inv.seeds = { ...inv.seeds };
+  const n = inv.seeds[seedId] ?? 0;
+  inv.seeds[seedId] = Math.max(0, n - count);
+  if (inv.seeds[seedId] === 0) delete inv.seeds[seedId];
+  await (await getDB()).put(STORE_INVENTORY, inv);
+}
+
+export async function removeTool(toolId: string, count: number = 1): Promise<void> {
+  if (typeof window === "undefined") return;
+  const inv = normalizeInv(await getInventory());
+  inv.tools = { ...(inv.tools ?? {}) };
+  const n = inv.tools[toolId] ?? 0;
+  inv.tools[toolId] = Math.max(0, n - count);
+  if (inv.tools[toolId] === 0) delete inv.tools[toolId];
+  await (await getDB()).put(STORE_INVENTORY, inv);
+}
+
+export async function removeWateringCan(wateringCanId: string, count: number = 1): Promise<void> {
+  if (typeof window === "undefined") return;
+  const inv = normalizeInv(await getInventory());
+  inv.wateringCans = { ...(inv.wateringCans ?? {}) };
+  const n = inv.wateringCans[wateringCanId] ?? 0;
+  inv.wateringCans[wateringCanId] = Math.max(0, n - count);
+  if (inv.wateringCans[wateringCanId] === 0) delete inv.wateringCans[wateringCanId];
+  await (await getDB()).put(STORE_INVENTORY, inv);
+}
+
+export async function removeBackpack(backpackId: string, count: number = 1): Promise<void> {
+  if (typeof window === "undefined") return;
+  const inv = normalizeInv(await getInventory());
+  if (backpackId === "green_backpack") return;
+  inv.backpacks = { ...(inv.backpacks ?? {}) };
+  const n = inv.backpacks[backpackId] ?? 0;
+  inv.backpacks[backpackId] = Math.max(0, n - count);
+  if (inv.backpacks[backpackId] === 0) delete inv.backpacks[backpackId];
+  if (inv.selectedBackpackId === backpackId && (inv.backpacks[backpackId] ?? 0) === 0) {
+    inv.selectedBackpackId = "green_backpack";
+  }
+  await (await getDB()).put(STORE_INVENTORY, inv);
+}

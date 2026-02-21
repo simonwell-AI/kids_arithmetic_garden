@@ -6,7 +6,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getCoins, addCoins, getPlantedSeedIds } from "@/src/persistence";
 import { SHOP_CATALOG, SHOP_CATEGORIES, DEFAULT_BACKPACK_IMAGE } from "@/src/shop/catalog";
 import { purchaseItem, getInventoryCounts, TOOL_DISPLAY_NAMES, WATERING_CAN_DISPLAY_NAMES, BACKPACK_DISPLAY_NAMES } from "@/src/shop/purchase";
-import { setSelectedBackpack } from "@/src/persistence/inventory";
+import {
+  setSelectedBackpack,
+  removeWater,
+  removeFertilizerBasic,
+  removeFertilizerPremium,
+  removeInsecticide,
+  removeSeed,
+  removeTool,
+  removeWateringCan,
+  removeBackpack,
+} from "@/src/persistence/inventory";
 import { getSeedIconPath } from "@/src/garden/assets";
 import type { ShopItem } from "@/src/shop/catalog";
 import { playPurchaseSound } from "@/src/lib/sound";
@@ -47,6 +57,8 @@ export default function ShopPage() {
   const [messageType, setMessageType] = useState<"success" | "error" | null>(null);
   const [coinNumberPop, setCoinNumberPop] = useState(false);
   const prevCoinsRef = useRef<number | null>(null);
+  const [showDiscardPanel, setShowDiscardPanel] = useState(false);
+  const [discardConfirm, setDiscardConfirm] = useState<{ label: string; execute: () => Promise<void> } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -227,6 +239,185 @@ export default function ShopPage() {
                     <span key={id}> · {BACKPACK_DISPLAY_NAMES[id] ?? id} × {n}</span>
                   ))}
               </p>
+              <div className="mt-2 border-t border-gray-200 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDiscardPanel((v) => !v)}
+                  className="text-sm font-medium text-amber-700 underline hover:text-amber-800"
+                >
+                  {showDiscardPanel ? "收起" : "丟掉物品"}
+                </button>
+                {showDiscardPanel && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {inventory.water > 0 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDiscardConfirm({
+                            label: "水",
+                            execute: () => removeWater(1),
+                          })
+                        }
+                        className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                      >
+                        水 × {inventory.water} 丟掉 1
+                      </button>
+                    )}
+                    {inventory.fertilizerBasic > 0 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDiscardConfirm({
+                            label: "一般肥料",
+                            execute: () => removeFertilizerBasic(1),
+                          })
+                        }
+                        className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                      >
+                        一般肥料 × {inventory.fertilizerBasic} 丟掉 1
+                      </button>
+                    )}
+                    {inventory.fertilizerPremium > 0 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDiscardConfirm({
+                            label: "高級肥料",
+                            execute: () => removeFertilizerPremium(1),
+                          })
+                        }
+                        className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                      >
+                        高級肥料 × {inventory.fertilizerPremium} 丟掉 1
+                      </button>
+                    )}
+                    {(inventory.insecticide ?? 0) > 0 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDiscardConfirm({
+                            label: "殺蟲劑",
+                            execute: () => removeInsecticide(1),
+                          })
+                        }
+                        className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                      >
+                        殺蟲劑 × {inventory.insecticide} 丟掉 1
+                      </button>
+                    )}
+                    {Object.entries(inventory.seeds)
+                      .filter(([, n]) => n > 0)
+                      .map(([id, n]) => {
+                        const name = SHOP_CATALOG.find((i) => i.type === "seed" && i.seedId === id)?.name ?? id;
+                        return (
+                          <button
+                            key={id}
+                            type="button"
+                            onClick={() =>
+                              setDiscardConfirm({
+                                label: name,
+                                execute: () => removeSeed(id, 1),
+                              })
+                            }
+                            className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                          >
+                            {name} × {n} 丟掉 1
+                          </button>
+                        );
+                      })}
+                    {Object.entries(inventory.tools ?? {})
+                      .filter(([, n]) => n > 0)
+                      .map(([id, n]) => (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() =>
+                            setDiscardConfirm({
+                              label: TOOL_DISPLAY_NAMES[id] ?? id,
+                              execute: () => removeTool(id, 1),
+                            })
+                          }
+                          className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                        >
+                          {TOOL_DISPLAY_NAMES[id] ?? id} × {n} 丟掉 1
+                        </button>
+                      ))}
+                    {Object.entries(inventory.wateringCans ?? {})
+                      .filter(([, n]) => n > 0)
+                      .map(([id, n]) => (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() =>
+                            setDiscardConfirm({
+                              label: WATERING_CAN_DISPLAY_NAMES[id] ?? id,
+                              execute: () => removeWateringCan(id, 1),
+                            })
+                          }
+                          className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                        >
+                          {WATERING_CAN_DISPLAY_NAMES[id] ?? id} × {n} 丟掉 1
+                        </button>
+                      ))}
+                    {Object.entries(inventory.backpacks ?? {})
+                      .filter(([id]) => id !== "green_backpack")
+                      .filter(([, n]) => n > 0)
+                      .map(([id, n]) => (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() =>
+                            setDiscardConfirm({
+                              label: BACKPACK_DISPLAY_NAMES[id] ?? id,
+                              execute: () => removeBackpack(id, 1),
+                            })
+                          }
+                          className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                        >
+                          {BACKPACK_DISPLAY_NAMES[id] ?? id} × {n} 丟掉 1
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        {discardConfirm && (
+          <div
+            className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="discard-confirm-title"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setDiscardConfirm(null);
+            }}
+          >
+            <div className="w-full max-w-xs rounded-2xl border-2 border-amber-200 bg-white p-5 shadow-xl">
+              <h2 id="discard-confirm-title" className="mb-3 text-center font-bold text-gray-800">
+                確定丟掉 1 個 {discardConfirm.label}？
+              </h2>
+              <p className="mb-4 text-center text-sm text-gray-600">丟掉後無法復原</p>
+              <div className="flex justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await discardConfirm.execute();
+                    setDiscardConfirm(null);
+                    load();
+                  }}
+                  className="min-h-[40px] rounded-xl bg-amber-600 px-5 font-bold text-white hover:bg-amber-700"
+                >
+                  確定
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDiscardConfirm(null)}
+                  className="min-h-[40px] rounded-xl border-2 border-gray-300 px-5 font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  取消
+                </button>
+              </div>
             </div>
           </div>
         )}
