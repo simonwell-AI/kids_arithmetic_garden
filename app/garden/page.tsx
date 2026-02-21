@@ -463,7 +463,7 @@ export default function GardenPage() {
     }
   }, [changePlantSelectedSeedId, load]);
 
-  const SEED_IDS = ["pink_flower", "sun_flower", "tomato", "rose", "brocoli", "tulip", "Lavender", "daffodils"];
+  const SEED_IDS = ["pink_flower", "sun_flower", "tomato", "rose", "brocoli", "tulip", "Lavender", "daffodils", "peach"];
 
   return (
     <div className="flex min-h-[100dvh] flex-col items-center bg-[var(--background)] px-4 py-8 sm:px-6 sm:py-10">
@@ -508,7 +508,7 @@ export default function GardenPage() {
               </div>
             ) : (
               <div className="flex flex-wrap justify-center gap-4">
-                {["pink_flower", "sun_flower", "tomato", "rose", "brocoli", "tulip", "Lavender", "daffodils"].map((seedId) => (
+                {["pink_flower", "sun_flower", "tomato", "rose", "brocoli", "tulip", "Lavender", "daffodils", "peach"].map((seedId) => (
                   <button
                     key={seedId}
                     type="button"

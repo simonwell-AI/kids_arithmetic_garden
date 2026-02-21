@@ -26,4 +26,5 @@ export const SEED_NAMES: Record<string, string> = {
   tulip: "鬱金香",
   Lavender: "薰衣草",
   daffodils: "水仙花",
+  peach: "水蜜桃",
 };

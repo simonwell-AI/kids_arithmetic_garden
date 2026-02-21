@@ -39,6 +39,7 @@ export const SHOP_CATALOG: ShopItem[] = [
   { id: "seed_tulip", type: "seed", name: "鬱金香種子", price: 25, seedId: "tulip" },
   { id: "seed_lavender", type: "seed", name: "薰衣草種子", price: 28, seedId: "Lavender" },
   { id: "seed_daffodils", type: "seed", name: "水仙花種子", price: 26, seedId: "daffodils" },
+  { id: "seed_peach", type: "seed", name: "水蜜桃種子", price: 28, seedId: "peach" },
   { id: "water", type: "water", name: "水", price: 1 },
   { id: "fertilizer_basic", type: "fertilizer_basic", name: "一般肥料", price: 5 },
   { id: "fertilizer_premium", type: "fertilizer_premium", name: "高級肥料", price: 12 },
