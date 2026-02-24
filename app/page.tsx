@@ -110,12 +110,18 @@ export default function Home() {
         </div>
         <TodayTask />
         <WeaknessSummary />
-        <div className="flex w-full flex-col gap-4 sm:flex-row sm:justify-center sm:gap-6">
+        <div className="flex w-full flex-col gap-4 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-6">
           <Link
             href="/drill"
             className="flex min-h-[56px] flex-1 items-center justify-center rounded-2xl bg-[var(--primary)] px-6 py-5 text-lg font-bold text-white shadow-lg transition-all hover:bg-[var(--primary-hover)] active:scale-[0.98] sm:min-h-[64px] sm:max-w-[200px] sm:py-6 sm:text-xl md:min-h-[72px]"
           >
             練習題
+          </Link>
+          <Link
+            href="/block"
+            className="flex min-h-[56px] flex-1 items-center justify-center rounded-2xl bg-emerald-500 px-6 py-5 text-lg font-bold text-white shadow-lg transition-all hover:bg-emerald-600 active:scale-[0.98] sm:min-h-[64px] sm:max-w-[200px] sm:py-6 sm:text-xl md:min-h-[72px]"
+          >
+            📦 方塊算術
           </Link>
           <Link
             href="/times-table"
