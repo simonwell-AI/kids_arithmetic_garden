@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { generateQuestion } from "@/src/generator";
 import type { Question } from "@/src/generator/types";
+import { addCoins } from "@/src/persistence/wallet";
+import { playBlockLandSound } from "@/src/lib/sound";
 
 const OP_SYMBOL: Record<Question["op"], string> = {
   add: "+",
@@ -28,6 +30,11 @@ const STREAK_BONUS_THRESHOLD = 3;
 const STREAK_BONUS_POINTS = 1;
 /** 堆疊上限：超過即 Game Over */
 const MAX_PILE = Math.ceil(GROUND_Y / BLOCK_HEIGHT);
+/** 遊戲結束時代幣換算：每 SCORE_PER_COIN 分換 1 代幣，上限 COIN_CAP */
+const SCORE_PER_COIN = 10;
+const COIN_CAP = 10;
+/** 連對 3、6、9…題時加倍：每 3 題倍率 ×2（3→2x, 6→4x, 9→8x） */
+const STREAK_DOUBLE_EVERY = 3;
 
 const DEFAULT_OPTIONS = {
   operation: "add" as const,
@@ -64,6 +71,9 @@ export default function BlockPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [gameOver, setGameOver] = useState(false);
+  const [coinsEarnedThisGame, setCoinsEarnedThisGame] = useState(0);
+  const [maxStreakThisGame, setMaxStreakThisGame] = useState(0);
+  const awardedRef = useRef(false);
   const answeredRef = useRef(false);
   const rafRef = useRef<number>(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -87,6 +97,18 @@ export default function BlockPage() {
     if (!gameOver && currentBlock === null && pile.length < MAX_PILE) spawnNext();
   }, [gameOver, currentBlock, pile.length, spawnNext]);
 
+  /** 遊戲結束時依總分一次結算代幣（只發一次）；連對 3、6、9…題則依序加倍 */
+  useEffect(() => {
+    if (!gameOver || awardedRef.current) return;
+    awardedRef.current = true;
+    const baseCoins = Math.floor(score / SCORE_PER_COIN);
+    const streakMultiplier = 2 ** Math.floor(maxStreakThisGame / STREAK_DOUBLE_EVERY);
+    const coins = Math.min(COIN_CAP, baseCoins * streakMultiplier);
+    if (coins > 0) {
+      addCoins(coins).then(() => setCoinsEarnedThisGame(coins));
+    }
+  }, [gameOver, score, maxStreakThisGame]);
+
   useEffect(() => {
     if (!currentBlock || isPaused || gameOver) return;
     const tick = () => {
@@ -96,6 +118,7 @@ export default function BlockPage() {
         if (nextY + BLOCK_HEIGHT >= pileTopY && !answeredRef.current) {
           answeredRef.current = true;
           setStreak(0);
+          playBlockLandSound();
           setMessage("沒答到～堆疊了");
           setTimeout(() => setMessage(null), 400);
           setPile((p) => {
@@ -127,6 +150,7 @@ export default function BlockPage() {
       if (num === currentBlock.question.answer) {
         const newStreak = streak + 1;
         setStreak(newStreak);
+        setMaxStreakThisGame((m) => Math.max(m, newStreak));
         const base = 1;
         const bonus = newStreak >= STREAK_BONUS_THRESHOLD ? STREAK_BONUS_POINTS : 0;
         setScore((s) => s + base + bonus);
@@ -134,6 +158,7 @@ export default function BlockPage() {
         setCurrentBlock(null);
       } else {
         setStreak(0);
+        playBlockLandSound();
         setMessage("答錯了～堆疊了");
         setPile((p) => {
           const next = [...p, { question: currentBlock.question, colorIndex: currentBlock.colorIndex }];
@@ -153,8 +178,11 @@ export default function BlockPage() {
     setCurrentBlock(null);
     setScore(0);
     setStreak(0);
+    setMaxStreakThisGame(0);
     setMessage(null);
     setGameOver(false);
+    setCoinsEarnedThisGame(0);
+    awardedRef.current = false;
     answeredRef.current = false;
   }, []);
 
@@ -164,6 +192,18 @@ export default function BlockPage() {
         <div className="flex w-full max-w-md flex-col items-center gap-6 rounded-2xl border-2 border-amber-200 bg-amber-50/80 p-8">
           <h1 className="text-center text-2xl font-bold text-amber-900">堆滿了！遊戲結束</h1>
           <p className="text-2xl font-bold text-amber-800">得分：{score}</p>
+          {coinsEarnedThisGame > 0 && (
+            <>
+              <p className="text-center text-lg font-semibold text-amber-700">
+                本場獲得 {coinsEarnedThisGame} 代幣
+              </p>
+              {maxStreakThisGame >= STREAK_DOUBLE_EVERY && (
+                <p className="text-center text-sm text-amber-600">
+                  連對 {maxStreakThisGame} 題，代幣 {2 ** Math.floor(maxStreakThisGame / STREAK_DOUBLE_EVERY)} 倍！
+                </p>
+              )}
+            </>
+          )}
           <div className="flex gap-3">
             <button
               type="button"

@@ -43,6 +43,16 @@ export function playFeedbackSound(correct: boolean): void {
   audio.play().catch(() => {});
 }
 
+/** 方塊算術：方塊掉到底部（堆疊）時播放 */
+export function playBlockLandSound(): void {
+  if (typeof window === "undefined") return;
+  const audio = wrongAudio ?? new Audio(WRONG_PATH);
+  wrongAudio = audio;
+  audio.volume = 0.5;
+  audio.currentTime = 0;
+  audio.play().catch(() => {});
+}
+
 export function playCelebrationSound(): void {
   if (typeof window === "undefined") return;
   const audio = celebrationAudio ?? new Audio(CELEBRATION_PATH);
