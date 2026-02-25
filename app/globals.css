@@ -1029,3 +1029,74 @@ body {
   animation: garden-bloom-flash 0.5s ease-out forwards;
   z-index: 5;
 }
+
+/* 蟲屋：鍬形蟲常駐搖擺 */
+@keyframes insect-beetle-sway {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(2deg); }
+}
+
+.insect-beetle-sway {
+  transform-origin: 50% 85%;
+  animation: insect-beetle-sway 3.6s ease-in-out infinite;
+  z-index: 1;
+}
+
+/* 蟲屋：餵食動畫 */
+@keyframes insect-feed-fall {
+  0% { transform: translateY(-30px); opacity: 1; }
+  70% { transform: translateY(40px); opacity: 0.9; }
+  100% { transform: translateY(50px); opacity: 0; }
+}
+
+@keyframes insect-feed-sparkle {
+  0% { opacity: 0; transform: scale(0.5); }
+  40% { opacity: 0.9; transform: scale(1.2); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+.insect-feed-drop {
+  animation: insect-feed-fall 1.6s ease-in forwards;
+}
+
+.insect-feed-sparkle {
+  animation: insect-feed-sparkle 0.8s ease-out forwards;
+  pointer-events: none;
+}
+
+/* 蟲屋：清潔小鏟動畫（由下往上鏟入再收回） */
+@keyframes insect-clean-shovel {
+  0% { transform: translate(20%, 30%) rotate(-15deg); opacity: 0.9; }
+  35% { transform: translate(-5%, -8%) rotate(5deg); opacity: 1; }
+  70% { transform: translate(-5%, -8%) rotate(8deg); opacity: 1; }
+  100% { transform: translate(-25%, 20%) rotate(-10deg); opacity: 0; }
+}
+
+.insect-clean-shovel {
+  animation: insect-clean-shovel 1.8s ease-in-out forwards;
+  pointer-events: none;
+}
+
+/* 蟲屋：清潔夾子動畫（由側邊伸入再夾取收回） */
+@keyframes insect-clean-clips {
+  0% { transform: translate(25%, 10%) scale(0.9); opacity: 0.9; }
+  40% { transform: translate(-8%, 0) scale(1); opacity: 1; }
+  70% { transform: translate(-8%, 2%) scale(0.95); opacity: 1; }
+  100% { transform: translate(-30%, 15%) scale(0.85); opacity: 0; }
+}
+
+.insect-clean-clips {
+  animation: insect-clean-clips 1.6s ease-in-out forwards;
+  pointer-events: none;
+}
+
+/* 蟲屋：除蟎時蟎圖淡出 */
+@keyframes insect-mites-fade {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.6); }
+}
+
+.insect-mites-fade {
+  animation: insect-mites-fade 0.5s ease-out forwards;
+  pointer-events: none;
+}

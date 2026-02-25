@@ -1,7 +1,7 @@
 import { openDB } from "idb";
 
 const DB_NAME = "kid-arithmetic-db";
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 export const STORE_SESSIONS = "sessions";
 export const STORE_ATTEMPTS = "attempts";
@@ -10,11 +10,13 @@ export const STORE_DAILY_PROGRESS = "dailyProgress";
 export const STORE_WALLET = "wallet";
 export const STORE_INVENTORY = "inventory";
 export const STORE_GARDEN = "garden";
+export const STORE_INSECT = "insect_home";
 export const STORE_ACHIEVEMENTS = "achievements";
 
 export const WALLET_KEY = "default";
 export const INVENTORY_KEY = "default";
 export const GARDEN_KEY = "default";
+export const INSECT_KEY = "default";
 export const ACHIEVEMENTS_KEY = "default";
 
 export interface SessionRecord {
@@ -61,6 +63,14 @@ export interface InventoryRecord {
   fertilizerPremium: number;
   /** 殺蟲劑（消耗品，花園除蟲用） */
   insecticide?: number;
+  /** 昆蟲飼料（蟲屋餵食用） */
+  insectFood?: number;
+  /** 除蟎劑（蟲屋除蟎用） */
+  miteSpray?: number;
+  /** 鍬形蟲幼蟲數量（開始飼養時消耗 1） */
+  stagBeetleLarva?: number;
+  /** 是否擁有蟲屋飼養箱（買一次永久） */
+  hasInsectHabitat?: boolean;
   seeds: Record<string, number>;
   tools?: Record<string, number>;
   wateringCans?: Record<string, number>;
@@ -94,6 +104,23 @@ export interface GardenRecord {
   hasBees?: boolean;
   /** 上次驅蜂時間（用於冷卻） */
   lastBeesRemovedAt?: number;
+}
+
+export interface InsectRecord {
+  id: string;
+  insectId: string;
+  /** 累積成長值，stage = growthValueToStage(growthValue) 為 1～5 */
+  growthValue: number;
+  plantedAt: number;
+  lastFedAt?: number;
+  /** 餵食次數（可選，用於結算加給） */
+  feedCount?: number;
+  hasMites?: boolean;
+  lastMiteRemovedAt?: number;
+  /** 上次使用昆蟲小鏟整理時間（用於冷卻） */
+  lastShovelUsedAt?: number;
+  /** 上次用夾子夾出糞便清潔時間；過久未清潔會生病、生長變慢 */
+  lastClipsUsedAt?: number;
 }
 
 export interface AchievementRecord {
@@ -174,6 +201,11 @@ export function getDB() {
         if (oldVersion < 4) {
           if (!db.objectStoreNames.contains(STORE_ACHIEVEMENTS)) {
             db.createObjectStore(STORE_ACHIEVEMENTS, { keyPath: "id" });
+          }
+        }
+        if (oldVersion < 5) {
+          if (!db.objectStoreNames.contains(STORE_INSECT)) {
+            db.createObjectStore(STORE_INSECT, { keyPath: "id" });
           }
         }
       },

@@ -11,6 +11,10 @@ import {
   expandCapacity,
   getInventoryState,
   totalItemCount,
+  addInsectFood,
+  addMiteSpray,
+  addStagBeetleLarva,
+  setHasInsectHabitat,
 } from "@/src/persistence/inventory";
 import type { ShopItem } from "./catalog";
 
@@ -20,8 +24,11 @@ export async function purchaseItem(item: ShopItem): Promise<{ success: boolean; 
   const inv = await getInventoryState();
   const used = totalItemCount(inv);
   const capacity = inv.capacity ?? 5;
-  if (item.type !== "backpack_expand" && used >= capacity) {
+  if (item.type !== "backpack_expand" && item.type !== "insect_habitat" && used >= capacity) {
     return { success: false, message: "背包已滿，請先擴充背包" };
+  }
+  if (item.type === "insect_habitat" && inv.hasInsectHabitat) {
+    return { success: false, message: "已經擁有飼養箱" };
   }
   await addCoins(-item.price);
   switch (item.type) {
@@ -37,6 +44,24 @@ export async function purchaseItem(item: ShopItem): Promise<{ success: boolean; 
     case "insecticide":
       await addInsecticide(1);
       return { success: true };
+    case "insect_food":
+      await addInsectFood(1);
+      return { success: true };
+    case "insect_larva":
+      await addStagBeetleLarva(1);
+      return { success: true };
+    case "insect_habitat":
+      await setHasInsectHabitat(true);
+      return { success: true };
+    case "mite_spray":
+      await addMiteSpray(1);
+      return { success: true };
+    case "insect_tool":
+      if (item.toolId) {
+        await addTool(item.toolId, 1);
+        return { success: true };
+      }
+      return { success: false, message: "無此蟲屋工具" };
     case "seed":
       if (item.seedId) {
         await addSeed(item.seedId, 1);
@@ -74,6 +99,10 @@ export async function getInventoryCounts(): Promise<{
   fertilizerBasic: number;
   fertilizerPremium: number;
   insecticide: number;
+  insectFood: number;
+  miteSpray: number;
+  stagBeetleLarva: number;
+  hasInsectHabitat: boolean;
   seeds: Record<string, number>;
   tools: Record<string, number>;
   wateringCans: Record<string, number>;
@@ -90,6 +119,10 @@ export async function getInventoryCounts(): Promise<{
     fertilizerBasic: inv.fertilizerBasic,
     fertilizerPremium: inv.fertilizerPremium,
     insecticide: inv.insecticide ?? 0,
+    insectFood: inv.insectFood ?? 0,
+    miteSpray: inv.miteSpray ?? 0,
+    stagBeetleLarva: inv.stagBeetleLarva ?? 0,
+    hasInsectHabitat: inv.hasInsectHabitat ?? false,
     seeds: inv.seeds ?? {},
     tools: inv.tools ?? {},
     wateringCans: inv.wateringCans ?? {},
@@ -107,6 +140,8 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
   garden_trowel: "園藝鏟",
   plant_mister: "噴霧器",
   potting_soil: "盆栽土",
+  insect_shovel: "昆蟲小鏟",
+  insect_clips: "昆蟲夾子",
 };
 
 export const WATERING_CAN_DISPLAY_NAMES: Record<string, string> = {

@@ -15,7 +15,7 @@ export interface DrillSettingsState {
 
 const DEFAULT_SETTINGS: DrillSettingsState = {
   operation: "add",
-  rangeMin: 0,
+  rangeMin: 1,
   rangeMax: 10,
   count: 10,
   difficulty: "normal",
@@ -39,7 +39,7 @@ export function DrillSettings({ initial, onSubmit }: DrillSettingsProps) {
   const handleSubmit = () => {
     onSubmit({
       operation: op,
-      rangeMin: 0,
+      rangeMin: 1,
       rangeMax,
       count,
       difficulty,

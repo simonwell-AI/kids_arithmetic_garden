@@ -12,6 +12,9 @@ import {
   removeFertilizerBasic,
   removeFertilizerPremium,
   removeInsecticide,
+  removeInsectFood,
+  removeMiteSpray,
+  removeStagBeetleLarva,
   removeSeed,
   removeTool,
   removeWateringCan,
@@ -35,6 +38,11 @@ function getShopItemIcon(item: ShopItem): string {
   if (item.type === "fertilizer_basic") return "/garden-assets/gargen_tools/normal fertilizer.png";
   if (item.type === "fertilizer_premium") return "/garden-assets/gargen_tools/Advanced_fertilizer.png";
   if (item.type === "insecticide") return "/garden-assets/gargen_tools/Caterpillar_Spray.png";
+  if (item.type === "insect_food") return "/insert-assets/insect_food.png";
+  if (item.type === "insect_larva") return "/insert-assets/stag_beetle/stag_beetle_1.png";
+  if (item.type === "insect_habitat") return "/insert-assets/habitat_empty.png";
+  if (item.type === "mite_spray") return "/insert-assets/mite_spray.png";
+  if (item.type === "insect_tool" && item.toolImagePath) return item.toolImagePath;
   if (item.type === "backpack_expand") return DEFAULT_BACKPACK_IMAGE;
   if (item.type === "tool" && item.toolImagePath) return item.toolImagePath;
   if (item.type === "watering_can" && item.wateringCanImagePath) return item.wateringCanImagePath;
@@ -73,6 +81,10 @@ export default function ShopPage() {
         fertilizerBasic: 0,
         fertilizerPremium: 0,
         insecticide: 0,
+        insectFood: 0,
+        miteSpray: 0,
+        stagBeetleLarva: 0,
+        hasInsectHabitat: false,
         seeds: {},
         tools: {},
         wateringCans: {},
@@ -148,15 +160,13 @@ export default function ShopPage() {
               {coins ?? 0}
             </span>
           </span>
-            {process.env.NODE_ENV === "development" && (
-              <button
-                type="button"
-                onClick={handleTestAddCoins}
-                className="rounded-lg border border-amber-300 bg-amber-100 px-3 py-1.5 text-sm font-semibold text-amber-800 hover:bg-amber-200 active:scale-[0.98]"
-              >
-                測試 +100 代幣
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={handleTestAddCoins}
+              className="rounded-lg border border-amber-300 bg-amber-100 px-3 py-1.5 text-sm font-semibold text-amber-800 hover:bg-amber-200 active:scale-[0.98]"
+            >
+              測試 +100 代幣
+            </button>
           </div>
         </div>
         <h1 className="text-center text-2xl font-bold text-[var(--foreground)] sm:text-3xl">
@@ -217,6 +227,10 @@ export default function ShopPage() {
               <p className="text-sm text-gray-600">
                 水 × {inventory.water} · 一般肥料 × {inventory.fertilizerBasic} ·
                 高級肥料 × {inventory.fertilizerPremium} · 殺蟲劑 × {inventory.insecticide}
+                {(inventory.insectFood ?? 0) > 0 && ` · 昆蟲飼料 × ${inventory.insectFood}`}
+                {(inventory.miteSpray ?? 0) > 0 && ` · 除蟎劑 × ${inventory.miteSpray}`}
+                {(inventory.stagBeetleLarva ?? 0) > 0 && ` · 鍬形蟲幼蟲 × ${inventory.stagBeetleLarva}`}
+                {inventory.hasInsectHabitat && " · 飼養箱 ✓"}
                 {Object.entries(inventory.seeds)
                   .filter(([, n]) => n > 0)
                   .map(([id, n]) => {
@@ -303,6 +317,48 @@ export default function ShopPage() {
                         className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
                       >
                         殺蟲劑 × {inventory.insecticide} 丟掉 1
+                      </button>
+                    )}
+                    {(inventory.insectFood ?? 0) > 0 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDiscardConfirm({
+                            label: "昆蟲飼料",
+                            execute: () => removeInsectFood(1),
+                          })
+                        }
+                        className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                      >
+                        昆蟲飼料 × {inventory.insectFood} 丟掉 1
+                      </button>
+                    )}
+                    {(inventory.miteSpray ?? 0) > 0 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDiscardConfirm({
+                            label: "除蟎劑",
+                            execute: () => removeMiteSpray(1),
+                          })
+                        }
+                        className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                      >
+                        除蟎劑 × {inventory.miteSpray} 丟掉 1
+                      </button>
+                    )}
+                    {(inventory.stagBeetleLarva ?? 0) > 0 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDiscardConfirm({
+                            label: "鍬形蟲幼蟲",
+                            execute: () => removeStagBeetleLarva(1),
+                          })
+                        }
+                        className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                      >
+                        鍬形蟲幼蟲 × {inventory.stagBeetleLarva} 丟掉 1
                       </button>
                     )}
                     {Object.entries(inventory.seeds)
@@ -460,11 +516,12 @@ export default function ShopPage() {
                       disabled={
                         coins != null &&
                         (coins < item.price ||
-                          (item.type !== "backpack_expand" && backpackFull))
+                          (item.type !== "backpack_expand" && item.type !== "insect_habitat" && backpackFull) ||
+                          (item.type === "insect_habitat" && (inventory?.hasInsectHabitat ?? false)))
                       }
                       className="mt-auto min-h-[44px] rounded-xl bg-[var(--primary)] px-4 font-semibold text-white transition-transform active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 hover:bg-[var(--primary-hover)]"
                     >
-                      購買
+                      {item.type === "insect_habitat" && (inventory?.hasInsectHabitat ?? false) ? "已擁有" : "購買"}
                     </button>
                   </li>
                 ))}

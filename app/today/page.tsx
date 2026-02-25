@@ -136,11 +136,7 @@ export default function TodayTaskPage() {
         if (achievementUnlock.todayStreak7JustUnlocked) names.push("今日任務連續 7 天");
         coinMsg += ` 成就解鎖：${names.join("、")}！獲得 ${achievementUnlock.coinsAwarded} 代幣。`;
       }
-      const fertilizerMsg = reward.fertilizerAwarded ? `，以及一般肥料 ×${reward.fertilizerAwarded}` : "";
-      setRewardMessage(coinMsg + fertilizerMsg);
-      setTimeout(() => setRewardMessage(null), 4000);
-    } else if (reward?.fertilizerAwarded) {
-      setRewardMessage(`今日任務完成！獲得一般肥料 ×${reward.fertilizerAwarded}`);
+      setRewardMessage(coinMsg);
       setTimeout(() => setRewardMessage(null), 4000);
     }
     }

@@ -17,7 +17,7 @@ const SPEED_QUIZ_QUESTION_COUNT = 10;
 function buildOperationQuestions(operation: Operation): Question[] {
   return generateQuestions({
     operation,
-    rangeMin: 0,
+    rangeMin: 1,
     rangeMax: 20,
     count: SPEED_QUIZ_QUESTION_COUNT,
     difficulty: "normal",

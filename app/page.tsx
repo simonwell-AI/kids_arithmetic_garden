@@ -95,7 +95,7 @@ export default function Home() {
             </div>
           )}
         </section>
-        <div className="grid w-full max-w-md grid-cols-3 gap-2 sm:max-w-lg sm:gap-4">
+        <div className="grid w-full max-w-md grid-cols-2 gap-2 sm:max-w-lg sm:grid-cols-4 sm:gap-4">
           <span className="flex min-w-0 items-center justify-center gap-1 rounded-xl border-2 border-amber-200 bg-amber-50 px-2 py-2 font-bold text-amber-800 shadow-sm sm:gap-2 sm:px-4">
             <Image src={COIN_IMAGE} alt="" width={24} height={24} className="h-5 w-5 shrink-0 object-contain animate-coin-pulse sm:h-6 sm:w-6" unoptimized />
             <span className="truncate text-sm sm:text-base">代幣：</span>
@@ -106,6 +106,9 @@ export default function Home() {
           </Link>
           <Link href="/garden" className="flex min-w-0 items-center justify-center rounded-xl border-2 border-green-300 bg-white px-2 py-2 text-center font-semibold text-green-700 hover:bg-green-100 sm:px-4 sm:py-2">
             🌱 我的花園
+          </Link>
+          <Link href="/insect" className="flex min-w-0 items-center justify-center rounded-xl border-2 border-amber-300 bg-white px-2 py-2 text-center font-semibold text-amber-800 hover:bg-amber-100 sm:px-4 sm:py-2">
+            🪲 蟲屋
           </Link>
         </div>
         <TodayTask />

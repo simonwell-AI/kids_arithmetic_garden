@@ -3,7 +3,6 @@ import {
   MIN_CORRECT_FOR_TODAY_REWARD,
   getStreak,
 } from "./dailyProgress";
-import { addFertilizerBasic } from "./inventory";
 import { claimDailyRewardIfEligible } from "./wallet";
 import { checkTodayStreakAchievements } from "./achievements";
 
@@ -18,8 +17,6 @@ export async function advanceDailyProgressAndClaimReward(correct: boolean): Prom
     newCoins: number;
     rewardAmount: number;
     streakBonus: number;
-    /** 完成今日任務額外送的一般肥料數量 */
-    fertilizerAwarded?: number;
     /** 答對率未達 70% 故未發獎 */
     thresholdNotMet?: boolean;
   };
@@ -29,14 +26,12 @@ export async function advanceDailyProgressAndClaimReward(correct: boolean): Prom
     const meetsThreshold = progress.correctCount >= MIN_CORRECT_FOR_TODAY_REWARD;
     if (meetsThreshold) {
       const reward = await claimDailyRewardIfEligible();
-      await addFertilizerBasic(1);
       const streak = await getStreak();
       const achievementUnlock = await checkTodayStreakAchievements(streak);
       return {
         ...progress,
         reward: {
           ...reward,
-          fertilizerAwarded: 1,
           ...(achievementUnlock.coinsAwarded > 0 && { achievementUnlock }),
         },
       };

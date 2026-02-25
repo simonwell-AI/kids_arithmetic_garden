@@ -10,6 +10,10 @@ async function getInventory(): Promise<InventoryRecord> {
     fertilizerBasic: 0,
     fertilizerPremium: 0,
     insecticide: 0,
+    insectFood: 0,
+    miteSpray: 0,
+    stagBeetleLarva: 0,
+    hasInsectHabitat: false,
     seeds: { pink_flower: 1 },
     tools: {},
     wateringCans: {},
@@ -24,6 +28,10 @@ function normalizeInv(record: InventoryRecord): InventoryRecord {
   return {
     ...record,
     insecticide: record.insecticide ?? 0,
+    insectFood: record.insectFood ?? 0,
+    miteSpray: record.miteSpray ?? 0,
+    stagBeetleLarva: record.stagBeetleLarva ?? 0,
+    hasInsectHabitat: record.hasInsectHabitat ?? false,
     tools: record.tools ?? {},
     wateringCans: record.wateringCans ?? {},
     backpacks: record.backpacks ?? {},
@@ -39,6 +47,10 @@ export async function getInventoryState(): Promise<InventoryRecord> {
     fertilizerBasic: 0,
     fertilizerPremium: 0,
     insecticide: 0,
+    insectFood: 0,
+    miteSpray: 0,
+    stagBeetleLarva: 0,
+    hasInsectHabitat: false,
     seeds: {},
     tools: {},
     wateringCans: {},
@@ -60,7 +72,7 @@ export function totalItemCount(inv: InventoryRecord): number {
   const toolCount = sumCounts(invN.tools ?? {});
   const wateringCanCount = sumCounts(invN.wateringCans ?? {});
   const backpackCount = sumCounts(invN.backpacks ?? {});
-  return invN.water + invN.fertilizerBasic + invN.fertilizerPremium + (invN.insecticide ?? 0) + seedCount + toolCount + wateringCanCount + backpackCount;
+  return invN.water + invN.fertilizerBasic + invN.fertilizerPremium + (invN.insecticide ?? 0) + (invN.insectFood ?? 0) + (invN.miteSpray ?? 0) + (invN.stagBeetleLarva ?? 0) + seedCount + toolCount + wateringCanCount + backpackCount;
 }
 
 export async function addTool(toolId: string, count: number): Promise<void> {
@@ -158,6 +170,64 @@ export async function useInsecticide(): Promise<boolean> {
   return true;
 }
 
+export async function addInsectFood(count: number): Promise<void> {
+  if (typeof window === "undefined") return;
+  const inv = await getInventory();
+  inv.insectFood = Math.max(0, (inv.insectFood ?? 0) + count);
+  await (await getDB()).put(STORE_INVENTORY, inv);
+}
+
+export async function useInsectFood(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  const inv = await getInventory();
+  const n = inv.insectFood ?? 0;
+  if (n < 1) return false;
+  inv.insectFood = n - 1;
+  await (await getDB()).put(STORE_INVENTORY, inv);
+  return true;
+}
+
+export async function addMiteSpray(count: number): Promise<void> {
+  if (typeof window === "undefined") return;
+  const inv = await getInventory();
+  inv.miteSpray = Math.max(0, (inv.miteSpray ?? 0) + count);
+  await (await getDB()).put(STORE_INVENTORY, inv);
+}
+
+export async function useMiteSpray(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  const inv = await getInventory();
+  const n = inv.miteSpray ?? 0;
+  if (n < 1) return false;
+  inv.miteSpray = n - 1;
+  await (await getDB()).put(STORE_INVENTORY, inv);
+  return true;
+}
+
+export async function addStagBeetleLarva(count: number): Promise<void> {
+  if (typeof window === "undefined") return;
+  const inv = await getInventory();
+  inv.stagBeetleLarva = Math.max(0, (inv.stagBeetleLarva ?? 0) + count);
+  await (await getDB()).put(STORE_INVENTORY, inv);
+}
+
+export async function useStagBeetleLarva(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  const inv = await getInventory();
+  const n = inv.stagBeetleLarva ?? 0;
+  if (n < 1) return false;
+  inv.stagBeetleLarva = n - 1;
+  await (await getDB()).put(STORE_INVENTORY, inv);
+  return true;
+}
+
+export async function setHasInsectHabitat(has: boolean): Promise<void> {
+  if (typeof window === "undefined") return;
+  const inv = await getInventory();
+  inv.hasInsectHabitat = has;
+  await (await getDB()).put(STORE_INVENTORY, inv);
+}
+
 export async function addSeed(seedId: string, count: number): Promise<void> {
   if (typeof window === "undefined") return;
   const inv = await getInventory();
@@ -232,6 +302,27 @@ export async function removeInsecticide(count: number = 1): Promise<void> {
   if (typeof window === "undefined") return;
   const inv = normalizeInv(await getInventory());
   inv.insecticide = Math.max(0, (inv.insecticide ?? 0) - count);
+  await (await getDB()).put(STORE_INVENTORY, inv);
+}
+
+export async function removeInsectFood(count: number = 1): Promise<void> {
+  if (typeof window === "undefined") return;
+  const inv = normalizeInv(await getInventory());
+  inv.insectFood = Math.max(0, (inv.insectFood ?? 0) - count);
+  await (await getDB()).put(STORE_INVENTORY, inv);
+}
+
+export async function removeMiteSpray(count: number = 1): Promise<void> {
+  if (typeof window === "undefined") return;
+  const inv = normalizeInv(await getInventory());
+  inv.miteSpray = Math.max(0, (inv.miteSpray ?? 0) - count);
+  await (await getDB()).put(STORE_INVENTORY, inv);
+}
+
+export async function removeStagBeetleLarva(count: number = 1): Promise<void> {
+  if (typeof window === "undefined") return;
+  const inv = normalizeInv(await getInventory());
+  inv.stagBeetleLarva = Math.max(0, (inv.stagBeetleLarva ?? 0) - count);
   await (await getDB()).put(STORE_INVENTORY, inv);
 }
 

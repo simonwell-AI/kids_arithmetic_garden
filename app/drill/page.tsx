@@ -73,20 +73,21 @@ export default function DrillPage() {
   const handleStartDrill = useCallback(async (s: DrillSettingsState) => {
     setSettings(s);
     let qs: Question[];
+    const effectiveRangeMin = Math.max(1, s.rangeMin ?? 0);
     if (s.adaptive) {
       const weights = await getAllWeights();
       setWeightsMap(weights);
       const count = s.count ?? 20;
       qs = sampleQuestions(weights, count, {
         operation: s.operation,
-        rangeMin: s.rangeMin,
+        rangeMin: effectiveRangeMin,
         rangeMax: s.rangeMax,
         difficulty: s.difficulty,
       });
     } else {
       qs = generateQuestions({
         operation: s.operation,
-        rangeMin: s.rangeMin,
+        rangeMin: effectiveRangeMin,
         rangeMax: s.rangeMax,
         count: s.count ?? 20,
         difficulty: s.difficulty,
@@ -192,7 +193,7 @@ export default function DrillPage() {
     }
     const qs: Question[] = wrongAttempts.map((a) => {
       const q = generateQuestionFromSkillKey(a.skillKey, {
-        rangeMin: settings?.rangeMin ?? 0,
+        rangeMin: Math.max(1, settings?.rangeMin ?? 1),
         rangeMax: settings?.rangeMax ?? 20,
       });
       return q ?? { a: a.question.a, b: a.question.b, op: a.question.op as Question["op"], answer: a.question.answer, skillKey: a.skillKey };
@@ -246,7 +247,7 @@ export default function DrillPage() {
                 onClick={() => setPhase("mixedSpeed")}
                 className="min-h-[56px] rounded-2xl bg-amber-400 px-6 py-4 text-lg font-bold text-amber-950 shadow transition hover:bg-amber-500 active:scale-[0.98] touch-manipulation"
               >
-                綜合題速度測驗（成功率 80% 給 6 代幣＋1 瓶水）
+                綜合題速度測驗（成功率 80% 給 6 代幣）
               </button>
               <button
                 type="button"
