@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { getCoins, getPlantedSeedIds } from "@/src/persistence";
 import { getRaisedInsectIds } from "@/src/persistence/insect";
 import { SHOP_CATALOG, SHOP_CATEGORIES, DEFAULT_BACKPACK_IMAGE } from "@/src/shop/catalog";
@@ -63,7 +63,7 @@ function getItemsByCategory(catalog: ShopItem[]) {
   })).filter((group) => group.items.length > 0);
 }
 
-export default function ShopPage() {
+function ShopPageContent() {
   const [coins, setCoins] = useState<number | null>(null);
   const [inventory, setInventory] = useState<Awaited<ReturnType<typeof getInventoryCounts>> | null>(null);
   const [plantedSeedIds, setPlantedSeedIds] = useState<string[]>([]);
@@ -593,5 +593,19 @@ export default function ShopPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ShopPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[100dvh] items-center justify-center bg-[var(--background)] px-4 py-8">
+          <p className="text-[var(--foreground)]">載入中...</p>
+        </div>
+      }
+    >
+      <ShopPageContent />
+    </Suspense>
   );
 }
