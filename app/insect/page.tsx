@@ -325,13 +325,13 @@ export default function InsectPage() {
                   </div>
                 )}
 
-                {/* 除蟎噴霧動畫（沿用花園噴霧樣式） */}
+                {/* 除蟎噴霧動畫（飼養箱中央顯示） */}
                 {animating === "spray" && (
                   <div
                     className="garden-animate-spray pointer-events-none absolute inset-0 z-20 overflow-visible"
                     style={{ ["--spray-duration" as string]: `${SPRAY_ANIMATION_MS}ms` }}
                   >
-                    <div className="garden-tool-spray-wrap">
+                    <div className="garden-tool-spray-wrap insect-spray-center">
                       <Image src={MITE_SPRAY_IMAGE} alt="" width={56} height={56} className="garden-tool-spray-swing object-contain" unoptimized />
                     </div>
                     {[0, 1, 2, 3, 4, 5, 6].map((i) => (
@@ -339,8 +339,8 @@ export default function InsectPage() {
                         key={`spray-${i}`}
                         className="garden-spray-cloud absolute h-10 w-10 rounded-full bg-emerald-200/60"
                         style={{
-                          top: `${28 + (i % 3) * 16}%`,
-                          left: `${22 + (i % 2) * 24 + i * 3}%`,
+                          top: `${32 + (i % 3) * 14}%`,
+                          left: `${28 + (i % 2) * 22 + i * 2}%`,
                           animationDelay: `${0.08 + i * 0.1}s`,
                         }}
                       />

@@ -1100,3 +1100,10 @@ body {
   animation: insect-mites-fade 0.5s ease-out forwards;
   pointer-events: none;
 }
+
+/* 蟲屋：除蟎瓶與噴霧在飼養箱中央 */
+.insect-spray-center {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
