@@ -37,8 +37,8 @@ const COIN_CAP = 10;
 const STREAK_DOUBLE_EVERY = 3;
 
 const DEFAULT_OPTIONS = {
-  operation: "add" as const,
-  rangeMin: 0,
+  operation: "mixed" as const,
+  rangeMin: 1,
   rangeMax: 20,
   difficulty: "easy" as const,
 };
