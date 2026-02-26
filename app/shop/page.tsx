@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getCoins, getPlantedSeedIds } from "@/src/persistence";
+import { getRaisedInsectIds } from "@/src/persistence/insect";
 import { SHOP_CATALOG, SHOP_CATEGORIES, DEFAULT_BACKPACK_IMAGE } from "@/src/shop/catalog";
 import { purchaseItem, getInventoryCounts, TOOL_DISPLAY_NAMES, WATERING_CAN_DISPLAY_NAMES, BACKPACK_DISPLAY_NAMES } from "@/src/shop/purchase";
 import {
@@ -16,6 +17,7 @@ import {
   removeMiteSpray,
   removeAdvancedInsectGrowthMedicine,
   removeStagBeetleLarva,
+  removeButterflyEgg,
   removeSeed,
   removeTool,
   removeWateringCan,
@@ -41,6 +43,7 @@ function getShopItemIcon(item: ShopItem): string {
   if (item.type === "insecticide") return "/garden-assets/gargen_tools/Caterpillar_Spray.png";
   if (item.type === "insect_food") return "/insert-assets/insect_food.png";
   if (item.type === "insect_larva") return "/insert-assets/stag_beetle/stag_beetle_1.png";
+  if (item.type === "butterfly_egg") return "/insert-assets/butterfly/butterfly_1.png";
   if (item.type === "insect_habitat") return "/insert-assets/habitat_empty.png";
   if (item.type === "mite_spray") return "/insert-assets/mite_spray.png";
   if (item.type === "insect_growth_medicine") return "/insert-assets/advanced_insect_growth_medicine.png";
@@ -63,6 +66,7 @@ export default function ShopPage() {
   const [coins, setCoins] = useState<number | null>(null);
   const [inventory, setInventory] = useState<Awaited<ReturnType<typeof getInventoryCounts>> | null>(null);
   const [plantedSeedIds, setPlantedSeedIds] = useState<string[]>([]);
+  const [raisedInsectIds, setRaisedInsectIds] = useState<string[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [messageType, setMessageType] = useState<"success" | "error" | null>(null);
   const [coinNumberPop, setCoinNumberPop] = useState(false);
@@ -72,10 +76,16 @@ export default function ShopPage() {
 
   const load = useCallback(async () => {
     try {
-      const [c, inv, planted] = await Promise.all([getCoins(), getInventoryCounts(), getPlantedSeedIds()]);
+      const [c, inv, planted, raised] = await Promise.all([
+        getCoins(),
+        getInventoryCounts(),
+        getPlantedSeedIds(),
+        getRaisedInsectIds(),
+      ]);
       setCoins(c);
       setInventory(inv);
       setPlantedSeedIds(planted);
+      setRaisedInsectIds(raised);
     } catch {
       setCoins(0);
       setInventory({
@@ -87,6 +97,7 @@ export default function ShopPage() {
         miteSpray: 0,
         advancedInsectGrowthMedicine: 0,
         stagBeetleLarva: 0,
+        butterflyEgg: 0,
         hasInsectHabitat: false,
         seeds: {},
         tools: {},
@@ -136,10 +147,13 @@ export default function ShopPage() {
 
   const backpackFull = inventory != null && inventory.used >= inventory.capacity;
 
-  /** 已種過的種子不再販賣 */
-  const shopCatalog = SHOP_CATALOG.filter(
-    (item) => item.type !== "seed" || (item.seedId != null && !plantedSeedIds.includes(item.seedId))
-  );
+  /** 已種過的種子不再販賣；蟲屋養過的昆蟲，其蟲卵／幼蟲不再販賣 */
+  const shopCatalog = SHOP_CATALOG.filter((item) => {
+    if (item.type === "seed") return item.seedId != null && !plantedSeedIds.includes(item.seedId);
+    if (item.type === "insect_larva" && raisedInsectIds.includes("stag_beetle")) return false;
+    if (item.type === "butterfly_egg" && raisedInsectIds.includes("butterfly")) return false;
+    return true;
+  });
 
   return (
     <div className="flex min-h-[100dvh] flex-col items-center bg-[var(--background)] px-4 py-8 sm:px-6 sm:py-10">
@@ -222,6 +236,7 @@ export default function ShopPage() {
                 {(inventory.miteSpray ?? 0) > 0 && ` · 除蟎劑 × ${inventory.miteSpray}`}
                 {(inventory.advancedInsectGrowthMedicine ?? 0) > 0 && ` · 高級昆蟲成長藥 × ${inventory.advancedInsectGrowthMedicine}`}
                 {(inventory.stagBeetleLarva ?? 0) > 0 && ` · 鍬形蟲幼蟲 × ${inventory.stagBeetleLarva}`}
+                {(inventory.butterflyEgg ?? 0) > 0 && ` · 蝴蝶蟲卵 × ${inventory.butterflyEgg}`}
                 {inventory.hasInsectHabitat && " · 飼養箱 ✓"}
                 {Object.entries(inventory.seeds)
                   .filter(([, n]) => n > 0)
@@ -365,6 +380,20 @@ export default function ShopPage() {
                         className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
                       >
                         鍬形蟲幼蟲 × {inventory.stagBeetleLarva} 丟掉 1
+                      </button>
+                    )}
+                    {(inventory.butterflyEgg ?? 0) > 0 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDiscardConfirm({
+                            label: "蝴蝶蟲卵",
+                            execute: () => removeButterflyEgg(1),
+                          })
+                        }
+                        className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                      >
+                        蝴蝶蟲卵 × {inventory.butterflyEgg} 丟掉 1
                       </button>
                     )}
                     {Object.entries(inventory.seeds)

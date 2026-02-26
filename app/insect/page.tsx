@@ -3,12 +3,13 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
-import { getInsect, startInsect, feedInsect, releaseInsect, removeMites, cleanWithShovel, cleanWithClips, useGrowthMedicine, SHOVEL_COOLDOWN_MS, DIRTY_HABITAT_AFTER_MS } from "@/src/persistence/insect";
+import { getInsect, startInsect, feedInsect, releaseInsect, removeMites, cleanWithShovel, cleanWithClips, useGrowthMedicine, clearInsectWithoutRelease, SHOVEL_COOLDOWN_MS, DIRTY_HABITAT_AFTER_MS } from "@/src/persistence/insect";
 import { getInventoryState } from "@/src/persistence/inventory";
 import { unlockAudio, playSpraySound, playSoilSound, playSparkleSound, playCelebrationSound } from "@/src/lib/sound";
 
 const INSECT_ASSETS = "/insert-assets";
 const STAG_BEETLE_BASE = `${INSECT_ASSETS}/stag_beetle`;
+const BUTTERFLY_BASE = `${INSECT_ASSETS}/butterfly`;
 const HABITAT_EMPTY = `${INSECT_ASSETS}/habitat_empty.png`;
 const INSECT_FOOD_IMAGE = `${INSECT_ASSETS}/insect_food.png`;
 const MITE_SPRAY_IMAGE = `${INSECT_ASSETS}/mite_spray.png`;
@@ -44,6 +45,8 @@ export default function InsectPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [animating, setAnimating] = useState<InsectAnimating>(null);
   const [showReleaseCelebration, setShowReleaseCelebration] = useState(false);
+  const [showChangeInsectModal, setShowChangeInsectModal] = useState(false);
+  const [changeInsectSelected, setChangeInsectSelected] = useState<"stag_beetle" | "butterfly" | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
   const load = useCallback(async () => {
@@ -87,16 +90,37 @@ export default function InsectPage() {
   };
 
   const handleStart = useCallback(
-    async () => {
-      const result = await startInsect("stag_beetle");
+    async (insectId: "stag_beetle" | "butterfly") => {
+      const result = await startInsect(insectId);
       if (result.success) {
-        showMessage("開始飼養鍬形蟲～");
+        showMessage(insectId === "butterfly" ? "開始飼養蝴蝶～" : "開始飼養鍬形蟲～");
         load();
       } else {
         showMessage(result.message ?? "無法開始飼養");
       }
     },
     [load]
+  );
+
+  const handleChangeInsectConfirm = useCallback(
+    async () => {
+      if (!changeInsectSelected) return;
+      const clearResult = await clearInsectWithoutRelease();
+      if (!clearResult.success) {
+        showMessage(clearResult.message ?? "清除失敗");
+        return;
+      }
+      const startResult = await startInsect(changeInsectSelected);
+      if (startResult.success) {
+        showMessage(changeInsectSelected === "butterfly" ? "已改養蝴蝶～" : "已改養鍬形蟲～");
+        setShowChangeInsectModal(false);
+        setChangeInsectSelected(null);
+        load();
+      } else {
+        showMessage(startResult.message ?? "開始飼養失敗");
+      }
+    },
+    [changeInsectSelected, load]
   );
 
   const handleFeed = useCallback(async () => {
@@ -196,8 +220,10 @@ export default function InsectPage() {
   }, [load]);
 
   const hasHabitat = inventory?.hasInsectHabitat ?? false;
-  const hasLarva = (inventory?.stagBeetleLarva ?? 0) > 0;
-  const canStart = hasHabitat && hasLarva && !insect;
+  const hasStagBeetleLarva = (inventory?.stagBeetleLarva ?? 0) > 0;
+  const hasButterflyEgg = (inventory?.butterflyEgg ?? 0) > 0;
+  const hasAnyLarva = hasStagBeetleLarva || hasButterflyEgg;
+  const canStart = hasHabitat && hasAnyLarva && !insect;
   const feedCount = inventory?.insectFood ?? 0;
   const miteSprayCount = inventory?.miteSpray ?? 0;
   const growthMedicineCount = inventory?.advancedInsectGrowthMedicine ?? 0;
@@ -255,9 +281,9 @@ export default function InsectPage() {
         {hasHabitat && !insect && (
           <div className="flex w-full max-w-md flex-col items-center gap-6 rounded-2xl border border-green-200 bg-green-50/80 p-6 text-center">
             <Image src={HABITAT_EMPTY} alt="空飼養箱" width={200} height={160} className="rounded-lg object-contain" unoptimized />
-            {!hasLarva ? (
+            {!hasAnyLarva ? (
               <>
-                <p className="text-gray-700">飼養箱是空的～請到商店購買「鍬形蟲幼蟲」後再開始飼養。</p>
+                <p className="text-gray-700">飼養箱是空的～請到商店購買「鍬形蟲幼蟲」或「蝴蝶蟲卵」後再開始飼養。</p>
                 <Link
                   href="/shop"
                   className="min-h-[48px] rounded-xl bg-[var(--primary)] px-6 py-3 font-semibold text-white hover:bg-[var(--primary-hover)]"
@@ -267,14 +293,29 @@ export default function InsectPage() {
               </>
             ) : (
               <>
-                <p className="text-gray-700">你有鍬形蟲幼蟲，可以開始飼養囉！</p>
-                <button
-                  type="button"
-                  onClick={handleStart}
-                  className="min-h-[48px] rounded-xl bg-green-600 px-6 py-3 font-semibold text-white hover:bg-green-700 active:scale-[0.98]"
-                >
-                  開始飼養
-                </button>
+                <p className="text-gray-700">選擇要飼養的昆蟲：</p>
+                <div className="flex flex-wrap justify-center gap-3">
+                  {hasStagBeetleLarva && (
+                    <button
+                      type="button"
+                      onClick={() => handleStart("stag_beetle")}
+                      className="flex flex-col items-center gap-2 rounded-xl border-2 border-amber-300 bg-amber-50/80 px-6 py-4 font-semibold text-amber-900 hover:bg-amber-100 active:scale-[0.98]"
+                    >
+                      <Image src={`${STAG_BEETLE_BASE}/stag_beetle_1.png`} alt="" width={56} height={48} className="object-contain" unoptimized />
+                      鍬形蟲（× {inventory?.stagBeetleLarva ?? 0}）
+                    </button>
+                  )}
+                  {hasButterflyEgg && (
+                    <button
+                      type="button"
+                      onClick={() => handleStart("butterfly")}
+                      className="flex flex-col items-center gap-2 rounded-xl border-2 border-violet-300 bg-violet-50/80 px-6 py-4 font-semibold text-violet-900 hover:bg-violet-100 active:scale-[0.98]"
+                    >
+                      <Image src={`${BUTTERFLY_BASE}/butterfly_1.png`} alt="" width={56} height={48} className="object-contain" unoptimized />
+                      蝴蝶（× {inventory?.butterflyEgg ?? 0}）
+                    </button>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -294,8 +335,8 @@ export default function InsectPage() {
                 />
                 <div className="absolute inset-0 flex items-center justify-center p-4">
                   <Image
-                    src={`${STAG_BEETLE_BASE}/stag_beetle_${insect.growthStage}.png`}
-                    alt={`鍬形蟲 階段 ${insect.growthStage}`}
+                    src={insect.insectId === "butterfly" ? `${BUTTERFLY_BASE}/butterfly_${insect.growthStage}.png` : `${STAG_BEETLE_BASE}/stag_beetle_${insect.growthStage}.png`}
+                    alt={insect.insectId === "butterfly" ? `蝴蝶 階段 ${insect.growthStage}` : `鍬形蟲 階段 ${insect.growthStage}`}
                     width={140}
                     height={120}
                     className="insect-beetle-image insect-beetle-sway object-contain"
@@ -509,12 +550,96 @@ export default function InsectPage() {
                   🦋 放生（獲得代幣）
                 </button>
               )}
+              <button
+                type="button"
+                onClick={() => setShowChangeInsectModal(true)}
+                disabled={animating !== null}
+                className="min-h-[48px] rounded-2xl border-2 border-amber-300 bg-amber-50 px-6 font-bold text-amber-800 shadow-sm disabled:opacity-50 hover:bg-amber-100 active:scale-[0.98] disabled:cursor-not-allowed"
+              >
+                🔄 變更昆蟲
+              </button>
             </div>
 
             <p className="mt-3 text-center text-sm text-gray-600">
               成長階段：{STAGE_NAMES[insect.growthStage] ?? "?"}（{insect.growthStage}/5）
               {insect.feedCount != null && insect.feedCount > 0 && ` · 餵食 ${insect.feedCount} 次`}
             </p>
+          </div>
+        )}
+
+        {/* 變更昆蟲：選單 + 確認 */}
+        {showChangeInsectModal && (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="change-insect-title"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowChangeInsectModal(false);
+                setChangeInsectSelected(null);
+              }
+            }}
+          >
+            <div className="w-full max-w-sm rounded-3xl border-2 border-amber-200 bg-white p-6 shadow-xl">
+              <h2 id="change-insect-title" className="mb-4 text-center text-lg font-bold text-[var(--foreground)]">
+                🔄 變更昆蟲
+              </h2>
+              {!changeInsectSelected ? (
+                <>
+                  <p className="mb-3 text-center text-sm text-gray-600">選擇要改養的昆蟲（目前昆蟲將消失，無法復原）</p>
+                  <div className="flex flex-wrap justify-center gap-3">
+                    {hasStagBeetleLarva && (
+                      <button
+                        type="button"
+                        onClick={() => setChangeInsectSelected("stag_beetle")}
+                        className="flex flex-col items-center gap-2 rounded-2xl border-2 border-amber-300 bg-amber-50/80 p-4 transition hover:border-amber-400 hover:bg-amber-100"
+                      >
+                        <Image src={`${STAG_BEETLE_BASE}/stag_beetle_1.png`} alt="" width={64} height={56} className="object-contain" unoptimized />
+                        <span className="font-semibold text-amber-900">鍬形蟲</span>
+                        <span className="text-xs text-amber-700">× {inventory?.stagBeetleLarva ?? 0}</span>
+                      </button>
+                    )}
+                    {hasButterflyEgg && (
+                      <button
+                        type="button"
+                        onClick={() => setChangeInsectSelected("butterfly")}
+                        className="flex flex-col items-center gap-2 rounded-2xl border-2 border-violet-300 bg-violet-50/80 p-4 transition hover:border-violet-400 hover:bg-violet-100"
+                      >
+                        <Image src={`${BUTTERFLY_BASE}/butterfly_1.png`} alt="" width={64} height={56} className="object-contain" unoptimized />
+                        <span className="font-semibold text-violet-900">蝴蝶</span>
+                        <span className="text-xs text-violet-700">× {inventory?.butterflyEgg ?? 0}</span>
+                      </button>
+                    )}
+                  </div>
+                  {!hasStagBeetleLarva && !hasButterflyEgg && (
+                    <p className="mt-3 text-center text-sm text-amber-700">沒有可換養的昆蟲，請到商店購買鍬形蟲幼蟲或蝴蝶蟲卵。</p>
+                  )}
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-center text-sm text-gray-600">
+                    確定要改養{changeInsectSelected === "butterfly" ? "蝴蝶" : "鍬形蟲"}嗎？目前的蟲蟲將會消失喔。
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setChangeInsectSelected(null)}
+                      className="flex-1 rounded-xl border-2 border-gray-300 bg-gray-100 py-2 font-semibold text-gray-700 hover:bg-gray-200"
+                    >
+                      取消
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleChangeInsectConfirm}
+                      className="flex-1 rounded-xl bg-amber-600 py-2 font-semibold text-white hover:bg-amber-700"
+                    >
+                      確定
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </main>

@@ -13,6 +13,7 @@ async function getInventory(): Promise<InventoryRecord> {
     insectFood: 0,
     miteSpray: 0,
     stagBeetleLarva: 0,
+    butterflyEgg: 0,
     hasInsectHabitat: false,
     advancedInsectGrowthMedicine: 0,
     seeds: { pink_flower: 1 },
@@ -32,6 +33,7 @@ function normalizeInv(record: InventoryRecord): InventoryRecord {
     insectFood: record.insectFood ?? 0,
     miteSpray: record.miteSpray ?? 0,
     stagBeetleLarva: record.stagBeetleLarva ?? 0,
+    butterflyEgg: record.butterflyEgg ?? 0,
     hasInsectHabitat: record.hasInsectHabitat ?? false,
     advancedInsectGrowthMedicine: record.advancedInsectGrowthMedicine ?? 0,
     tools: record.tools ?? {},
@@ -52,6 +54,7 @@ export async function getInventoryState(): Promise<InventoryRecord> {
     insectFood: 0,
     miteSpray: 0,
     stagBeetleLarva: 0,
+    butterflyEgg: 0,
     hasInsectHabitat: false,
     advancedInsectGrowthMedicine: 0,
     seeds: {},
@@ -75,7 +78,7 @@ export function totalItemCount(inv: InventoryRecord): number {
   const toolCount = sumCounts(invN.tools ?? {});
   const wateringCanCount = sumCounts(invN.wateringCans ?? {});
   const backpackCount = sumCounts(invN.backpacks ?? {});
-  return invN.water + invN.fertilizerBasic + invN.fertilizerPremium + (invN.insecticide ?? 0) + (invN.insectFood ?? 0) + (invN.miteSpray ?? 0) + (invN.stagBeetleLarva ?? 0) + (invN.advancedInsectGrowthMedicine ?? 0) + seedCount + toolCount + wateringCanCount + backpackCount;
+  return invN.water + invN.fertilizerBasic + invN.fertilizerPremium + (invN.insecticide ?? 0) + (invN.insectFood ?? 0) + (invN.miteSpray ?? 0) + (invN.stagBeetleLarva ?? 0) + (invN.butterflyEgg ?? 0) + (invN.advancedInsectGrowthMedicine ?? 0) + seedCount + toolCount + wateringCanCount + backpackCount;
 }
 
 export async function addTool(toolId: string, count: number): Promise<void> {
@@ -231,6 +234,23 @@ export async function setHasInsectHabitat(has: boolean): Promise<void> {
   await (await getDB()).put(STORE_INVENTORY, inv);
 }
 
+export async function addButterflyEgg(count: number): Promise<void> {
+  if (typeof window === "undefined") return;
+  const inv = await getInventory();
+  inv.butterflyEgg = Math.max(0, (inv.butterflyEgg ?? 0) + count);
+  await (await getDB()).put(STORE_INVENTORY, inv);
+}
+
+export async function useButterflyEgg(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  const inv = await getInventory();
+  const n = inv.butterflyEgg ?? 0;
+  if (n < 1) return false;
+  inv.butterflyEgg = n - 1;
+  await (await getDB()).put(STORE_INVENTORY, inv);
+  return true;
+}
+
 export async function addAdvancedInsectGrowthMedicine(count: number): Promise<void> {
   if (typeof window === "undefined") return;
   const inv = await getInventory();
@@ -343,6 +363,13 @@ export async function removeStagBeetleLarva(count: number = 1): Promise<void> {
   if (typeof window === "undefined") return;
   const inv = normalizeInv(await getInventory());
   inv.stagBeetleLarva = Math.max(0, (inv.stagBeetleLarva ?? 0) - count);
+  await (await getDB()).put(STORE_INVENTORY, inv);
+}
+
+export async function removeButterflyEgg(count: number = 1): Promise<void> {
+  if (typeof window === "undefined") return;
+  const inv = normalizeInv(await getInventory());
+  inv.butterflyEgg = Math.max(0, (inv.butterflyEgg ?? 0) - count);
   await (await getDB()).put(STORE_INVENTORY, inv);
 }
 

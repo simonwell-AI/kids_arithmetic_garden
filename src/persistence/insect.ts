@@ -1,10 +1,37 @@
 import { getDB, STORE_INSECT, INSECT_KEY, type InsectRecord } from "./db";
-import { useInsectFood, useMiteSpray, useStagBeetleLarva, getInventoryState, hasTool, useTool, useAdvancedInsectGrowthMedicine } from "./inventory";
+import { useInsectFood, useMiteSpray, useStagBeetleLarva, useButterflyEgg, getInventoryState, hasTool, useTool, useAdvancedInsectGrowthMedicine } from "./inventory";
 import { addCoins } from "./wallet";
 
 const INSECT_MAX_STAGE = 5;
 /** 放生成蟲發放代幣 */
 const RELEASE_COINS = 20;
+
+/** 記錄「曾養過的昆蟲種類」的 key（存在同一個 STORE_INSECT） */
+const RAISED_INSECT_IDS_KEY = "raised_insect_ids";
+type RaisedInsectsRecord = { id: string; insectIds: string[] };
+
+async function getRaisedInsectsRecord(): Promise<RaisedInsectsRecord | null> {
+  const db = await getDB();
+  const record = await db.get(STORE_INSECT, RAISED_INSECT_IDS_KEY);
+  return (record as RaisedInsectsRecord | undefined) ?? null;
+}
+
+/** 取得曾養過的昆蟲種類（商店用來隱藏已養過的蟲卵／幼蟲） */
+export async function getRaisedInsectIds(): Promise<string[]> {
+  if (typeof window === "undefined") return [];
+  const record = await getRaisedInsectsRecord();
+  return record?.insectIds ?? [];
+}
+
+/** 將某種昆蟲標記為「已養過」；在 startInsect 成功時呼叫 */
+export async function markInsectAsRaised(insectId: string): Promise<void> {
+  if (typeof window === "undefined") return;
+  const record = await getRaisedInsectsRecord();
+  const ids = record?.insectIds ?? [];
+  if (ids.includes(insectId)) return;
+  const db = await getDB();
+  await db.put(STORE_INSECT, { id: RAISED_INSECT_IDS_KEY, insectIds: [...ids, insectId] });
+}
 /** 每次餵食增加成長值 */
 const GROWTH_PER_FEED = 0.2;
 /** 每日自然成長（無蟎時） */
@@ -113,17 +140,35 @@ export async function getInsect(): Promise<{
   };
 }
 
-/** 開始飼養：消耗 1 隻幼蟲，建立飼養記錄。需有飼養箱且背包有幼蟲。 */
+/** 清除飼養（不放生、不發代幣）：用於「變更昆蟲」時捨棄目前昆蟲，原幼蟲/蟲卵不會退還 */
+export async function clearInsectWithoutRelease(): Promise<{ success: boolean; message?: string }> {
+  if (typeof window === "undefined") return { success: false, message: "僅支援瀏覽器" };
+  const record = await getInsectRecord();
+  if (!record) return { success: false, message: "尚未飼養" };
+  const db = await getDB();
+  await db.delete(STORE_INSECT, INSECT_KEY);
+  return { success: true };
+}
+
+/** 開始飼養：消耗 1 隻幼蟲／蟲卵，建立飼養記錄。需有飼養箱且背包有對應幼蟲或蟲卵。 */
 export async function startInsect(insectId: string): Promise<{ success: boolean; message?: string }> {
   if (typeof window === "undefined") return { success: false, message: "僅支援瀏覽器" };
   const inv = await getInventoryState();
   if (!inv.hasInsectHabitat) return { success: false, message: "需要先購買飼養箱" };
-  if ((inv.stagBeetleLarva ?? 0) < 1) return { success: false, message: "需要鍬形蟲幼蟲，請到商店購買" };
   const existing = await getInsectRecord();
-  if (existing) return { success: false, message: "已經在飼養中" };
+  if (existing) return { success: false, message: "已經在飼養中，請先「變更昆蟲」再換養" };
 
-  const used = await useStagBeetleLarva();
-  if (!used) return { success: false, message: "幼蟲不足" };
+  if (insectId === "stag_beetle") {
+    if ((inv.stagBeetleLarva ?? 0) < 1) return { success: false, message: "需要鍬形蟲幼蟲，請到商店購買" };
+    const used = await useStagBeetleLarva();
+    if (!used) return { success: false, message: "幼蟲不足" };
+  } else if (insectId === "butterfly") {
+    if ((inv.butterflyEgg ?? 0) < 1) return { success: false, message: "需要蝴蝶蟲卵，請到商店購買" };
+    const used = await useButterflyEgg();
+    if (!used) return { success: false, message: "蝴蝶蟲卵不足" };
+  } else {
+    return { success: false, message: "不支援此昆蟲類型" };
+  }
 
   const record: InsectRecord = {
     id: INSECT_KEY,
@@ -133,6 +178,7 @@ export async function startInsect(insectId: string): Promise<{ success: boolean;
     feedCount: 0,
   };
   await saveInsect(record);
+  await markInsectAsRaised(insectId);
   return { success: true };
 }
 

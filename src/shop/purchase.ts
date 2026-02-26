@@ -14,6 +14,7 @@ import {
   addInsectFood,
   addMiteSpray,
   addStagBeetleLarva,
+  addButterflyEgg,
   setHasInsectHabitat,
   addAdvancedInsectGrowthMedicine,
 } from "@/src/persistence/inventory";
@@ -50,6 +51,9 @@ export async function purchaseItem(item: ShopItem): Promise<{ success: boolean; 
       return { success: true };
     case "insect_larva":
       await addStagBeetleLarva(1);
+      return { success: true };
+    case "butterfly_egg":
+      await addButterflyEgg(1);
       return { success: true };
     case "insect_habitat":
       await setHasInsectHabitat(true);
@@ -107,6 +111,7 @@ export async function getInventoryCounts(): Promise<{
   miteSpray: number;
   advancedInsectGrowthMedicine: number;
   stagBeetleLarva: number;
+  butterflyEgg: number;
   hasInsectHabitat: boolean;
   seeds: Record<string, number>;
   tools: Record<string, number>;
@@ -128,6 +133,7 @@ export async function getInventoryCounts(): Promise<{
     miteSpray: inv.miteSpray ?? 0,
     advancedInsectGrowthMedicine: inv.advancedInsectGrowthMedicine ?? 0,
     stagBeetleLarva: inv.stagBeetleLarva ?? 0,
+    butterflyEgg: inv.butterflyEgg ?? 0,
     hasInsectHabitat: inv.hasInsectHabitat ?? false,
     seeds: inv.seeds ?? {},
     tools: inv.tools ?? {},
