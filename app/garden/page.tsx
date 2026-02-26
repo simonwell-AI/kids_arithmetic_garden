@@ -127,6 +127,18 @@ export default function GardenPage() {
   const [showChangePlantModal, setShowChangePlantModal] = useState(false);
   const [changePlantSelectedSeedId, setChangePlantSelectedSeedId] = useState<string | null>(null);
   const [changePlantConfirming, setChangePlantConfirming] = useState(false);
+  /** 合照：開花時與植物自拍合成 */
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [photoCompositeBlob, setPhotoCompositeBlob] = useState<Blob | null>(null);
+  const photoVideoRef = useRef<HTMLVideoElement>(null);
+  const photoStreamRef = useRef<MediaStream | null>(null);
+  const photoPreviewUrl = useMemo(
+    () => (photoCompositeBlob ? URL.createObjectURL(photoCompositeBlob) : null),
+    [photoCompositeBlob]
+  );
+  useEffect(() => () => {
+    if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+  }, [photoPreviewUrl]);
 
   const wateringCanImagePath = useMemo(
     () => getWateringCanImagePath(inventory?.wateringCans),
@@ -444,6 +456,123 @@ export default function GardenPage() {
     }
   }, [load, garden]);
 
+  /** 合照模態：開啟時啟動相機，關閉時停止 */
+  useEffect(() => {
+    if (!showPhotoModal) {
+      photoStreamRef.current?.getTracks().forEach((t) => t.stop());
+      photoStreamRef.current = null;
+      return;
+    }
+    setPhotoCompositeBlob(null);
+    let stream: MediaStream | null = null;
+    navigator.mediaDevices
+      .getUserMedia({ video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } } })
+      .then((s) => {
+        stream = s;
+        photoStreamRef.current = s;
+        if (photoVideoRef.current) {
+          photoVideoRef.current.srcObject = s;
+        }
+      })
+      .catch(() => {
+        showMessage("無法使用相機，請允許相機權限");
+        setShowPhotoModal(false);
+      });
+    return () => {
+      stream?.getTracks().forEach((t) => t.stop());
+    };
+  }, [showPhotoModal]);
+
+  const handleTakePhoto = useCallback(() => {
+    const video = photoVideoRef.current;
+    if (!video || video.readyState < 2) return;
+    const seedId = garden?.seedId ?? "grape";
+    const plantPath = getSeedGrowthImagePath(seedId, 4);
+    const plantUrl = typeof window !== "undefined" ? window.location.origin + plantPath : plantPath;
+    const w = 600;
+    const h = 800;
+    const maxPlantH = h / 3;
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const drawSelfieAsBackground = (mirror: boolean) => {
+      const vw = video.videoWidth || 640;
+      const vh = video.videoHeight || 480;
+      const temp = document.createElement("canvas");
+      temp.width = vw;
+      temp.height = vh;
+      const tCtx = temp.getContext("2d");
+      if (!tCtx) return;
+      tCtx.drawImage(video, 0, 0, vw, vh);
+      const scale = Math.max(w / vw, h / vh);
+      const destW = vw * scale;
+      const destH = vh * scale;
+      const destX = (w - destW) / 2;
+      const destY = (h - destH) / 2;
+      if (mirror) {
+        ctx.save();
+        ctx.translate(w / 2, h / 2);
+        ctx.scale(-1, 1);
+        ctx.translate(-w / 2, -h / 2);
+        ctx.drawImage(temp, 0, 0, vw, vh, destX, destY, destW, destH);
+        ctx.restore();
+      } else {
+        ctx.drawImage(temp, 0, 0, vw, vh, destX, destY, destW, destH);
+      }
+    };
+
+    const plantImg = new window.Image();
+    plantImg.onload = () => {
+      drawSelfieAsBackground(true);
+      const scale = Math.min(w / plantImg.naturalWidth, maxPlantH / plantImg.naturalHeight);
+      const dw = plantImg.naturalWidth * scale;
+      const dh = plantImg.naturalHeight * scale;
+      const dx = (w - dw) / 2;
+      const dy = h - dh;
+      ctx.drawImage(plantImg, 0, 0, plantImg.naturalWidth, plantImg.naturalHeight, dx, dy, dw, dh);
+      canvas.toBlob(
+        (blob) => {
+          if (blob) setPhotoCompositeBlob(blob);
+        },
+        "image/png",
+        0.92
+      );
+    };
+    plantImg.onerror = () => {
+      drawSelfieAsBackground(true);
+      canvas.toBlob((blob) => blob && setPhotoCompositeBlob(blob), "image/png", 0.92);
+    };
+    plantImg.src = plantUrl;
+  }, [garden]);
+
+  const handleDownloadPhoto = useCallback(() => {
+    if (!photoCompositeBlob) return;
+    const url = URL.createObjectURL(photoCompositeBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "與植物合照.png";
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [photoCompositeBlob]);
+
+  const handleSharePhoto = useCallback(async () => {
+    if (!photoCompositeBlob) return;
+    const file = new File([photoCompositeBlob], "與植物合照.png", { type: "image/png" });
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: "與植物合照" });
+        setShowPhotoModal(false);
+      } catch (e) {
+        if ((e as Error).name !== "AbortError") showMessage("分享失敗");
+      }
+    } else {
+      handleDownloadPhoto();
+    }
+  }, [photoCompositeBlob, handleDownloadPhoto]);
+
   const handleChangePlantConfirm = useCallback(async () => {
     if (!changePlantSelectedSeedId) return;
     const clearResult = await clearGardenWithoutHarvest();
@@ -473,9 +602,18 @@ export default function GardenPage() {
           <Link href="/" className="font-semibold text-[var(--primary)] hover:underline">
             ← 返回首頁
           </Link>
-          <Link href="/shop?from=garden" className="font-semibold text-[var(--primary)] hover:underline">
-            商店
-          </Link>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setShowPhotoModal(true)}
+              className="text-sm font-medium text-gray-500 hover:text-gray-700 underline"
+            >
+              測試合照
+            </button>
+            <Link href="/shop?from=garden" className="font-semibold text-[var(--primary)] hover:underline">
+              商店
+            </Link>
+          </div>
         </div>
         <h1 className="text-center text-2xl font-bold text-[var(--foreground)] sm:text-3xl">
           🌱 我的花園
@@ -1259,17 +1397,111 @@ export default function GardenPage() {
               </button>
             )}
             {garden?.isBloom && !isHarvesting && (
-              <button
-                type="button"
-                onClick={handleHarvest}
-                className="min-h-[48px] rounded-2xl bg-[var(--primary)] px-6 font-bold text-white shadow-md hover:bg-[var(--primary-hover)] active:scale-[0.98]"
-              >
-                🌸 收成（可再種新種子）
-              </button>
+              <div className="flex flex-wrap justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowPhotoModal(true)}
+                  className="min-h-[48px] rounded-2xl border-2 border-green-500 bg-green-50 px-6 font-bold text-green-700 shadow-sm hover:bg-green-100 active:scale-[0.98]"
+                >
+                  📷 合照
+                </button>
+                <button
+                  type="button"
+                  onClick={handleHarvest}
+                  className="min-h-[48px] rounded-2xl bg-[var(--primary)] px-6 font-bold text-white shadow-md hover:bg-[var(--primary-hover)] active:scale-[0.98]"
+                >
+                  🌸 收成（可再種新種子）
+                </button>
+              </div>
             )}
           </div>
           );
         })()}
+        {showPhotoModal && (
+          <div
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/70 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="photo-modal-title"
+          >
+            <div className="flex w-full max-w-lg flex-col gap-4 rounded-2xl border-2 border-green-200 bg-white p-4 shadow-xl">
+              <h2 id="photo-modal-title" className="text-center text-lg font-bold text-[var(--foreground)]">
+                📷 與植物合照
+              </h2>
+              {!photoCompositeBlob ? (
+                <>
+                  <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-gray-900">
+                    <video
+                      ref={photoVideoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="h-full w-full object-cover mirror-selfie"
+                      style={{ transform: "scaleX(-1)" }}
+                    />
+                  </div>
+                  <p className="text-center text-sm text-gray-600">對準鏡頭後按「拍照」</p>
+                  <div className="flex justify-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleTakePhoto}
+                      className="min-h-[48px] rounded-xl bg-green-600 px-6 font-bold text-white hover:bg-green-700"
+                    >
+                      拍照
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowPhotoModal(false)}
+                      className="min-h-[48px] rounded-xl border-2 border-gray-300 px-6 font-semibold text-gray-700 hover:bg-gray-50"
+                    >
+                      取消
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-gray-100">
+                    {photoPreviewUrl && (
+                      <img
+                        src={photoPreviewUrl}
+                        alt="與植物合照"
+                        className="h-full w-full object-contain"
+                      />
+                    )}
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleDownloadPhoto}
+                      className="min-h-[48px] rounded-xl bg-[var(--primary)] px-6 font-bold text-white hover:bg-[var(--primary-hover)]"
+                    >
+                      下載
+                    </button>
+                    {typeof navigator !== "undefined" && typeof navigator.share === "function" && (
+                      <button
+                        type="button"
+                        onClick={handleSharePhoto}
+                        className="min-h-[48px] rounded-xl bg-green-600 px-6 font-bold text-white hover:bg-green-700"
+                      >
+                        儲存／分享
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowPhotoModal(false);
+                        setPhotoCompositeBlob(null);
+                      }}
+                      className="min-h-[48px] rounded-xl border-2 border-gray-300 px-6 font-semibold text-gray-700 hover:bg-gray-50"
+                    >
+                      關閉
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
         {achievements && (
           <div className="w-full rounded-2xl border border-amber-200 bg-amber-50/80 p-3 sm:p-4">
             <h2 className="mb-2 text-center text-sm font-bold text-amber-900 sm:text-base">🏅 成就徽章</h2>
