@@ -1,6 +1,7 @@
 import { getDB, STORE_ACHIEVEMENTS, ACHIEVEMENTS_KEY, type AchievementRecord } from "./db";
 import { addCoins } from "./wallet";
 import { getStreak } from "./dailyProgress";
+import { getRaisedInsectIds } from "./insect";
 
 /** 解鎖成就時發放的代幣 */
 const UNLOCK_COINS = 2;
@@ -76,6 +77,19 @@ export interface AchievementState {
   todayStreak: number;
   todayStreak3Unlocked: boolean;
   todayStreak7Unlocked: boolean;
+  /** 蟲屋成就 */
+  insectFirstStartUnlocked: boolean;
+  insectStreak7Unlocked: boolean;
+  insectConsecutiveDays: number;
+  insectMiteRemovedCount: number;
+  insectMiteRemoved3Unlocked: boolean;
+  insectFeedCount: number;
+  insectFeed10Unlocked: boolean;
+  insectReleaseCount: number;
+  insectRelease1Unlocked: boolean;
+  insectRelease3Unlocked: boolean;
+  insectTypesRaisedCount: number;
+  insectTypes2Unlocked: boolean;
 }
 
 export async function getAchievements(): Promise<AchievementState> {
@@ -97,11 +111,24 @@ export async function getAchievements(): Promise<AchievementState> {
       todayStreak: 0,
       todayStreak3Unlocked: false,
       todayStreak7Unlocked: false,
+      insectFirstStartUnlocked: false,
+      insectStreak7Unlocked: false,
+      insectConsecutiveDays: 0,
+      insectMiteRemovedCount: 0,
+      insectMiteRemoved3Unlocked: false,
+      insectFeedCount: 0,
+      insectFeed10Unlocked: false,
+      insectReleaseCount: 0,
+      insectRelease1Unlocked: false,
+      insectRelease3Unlocked: false,
+      insectTypesRaisedCount: 0,
+      insectTypes2Unlocked: false,
     };
   }
   const r = await getAchievementRecord();
   const plantedCount = r.plantedSeedIds?.length ?? 0;
   const todayStreak = await getStreak();
+  const raisedIds = await getRaisedInsectIds();
   return {
     firstBloomUnlocked: r.firstBloomUnlocked,
     gardenStreak7Unlocked: r.gardenStreak7Unlocked,
@@ -119,6 +146,18 @@ export async function getAchievements(): Promise<AchievementState> {
     todayStreak,
     todayStreak3Unlocked: r.todayStreak3Unlocked ?? false,
     todayStreak7Unlocked: r.todayStreak7Unlocked ?? false,
+    insectFirstStartUnlocked: r.insectFirstStartUnlocked ?? false,
+    insectStreak7Unlocked: r.insectStreak7Unlocked ?? false,
+    insectConsecutiveDays: r.insectConsecutiveDays ?? 0,
+    insectMiteRemovedCount: r.insectMiteRemovedCount ?? 0,
+    insectMiteRemoved3Unlocked: r.insectMiteRemoved3Unlocked ?? false,
+    insectFeedCount: r.insectFeedCount ?? 0,
+    insectFeed10Unlocked: r.insectFeed10Unlocked ?? false,
+    insectReleaseCount: r.insectReleaseCount ?? 0,
+    insectRelease1Unlocked: r.insectRelease1Unlocked ?? false,
+    insectRelease3Unlocked: r.insectRelease3Unlocked ?? false,
+    insectTypesRaisedCount: raisedIds.length,
+    insectTypes2Unlocked: r.insectTypes2Unlocked ?? false,
   };
 }
 
@@ -316,4 +355,134 @@ export async function addPlantedSeedId(seedId: string): Promise<{
     };
   }
   return { coinsAwarded: 0 };
+}
+
+/** 蟲屋：記錄今日進蟲屋，更新連續天數；達 7 天解鎖並發代幣 */
+export async function recordInsectVisit(): Promise<{
+  consecutiveDays: number;
+  justUnlocked: boolean;
+  coinsAwarded: number;
+}> {
+  if (typeof window === "undefined") return { consecutiveDays: 0, justUnlocked: false, coinsAwarded: 0 };
+  const r = await getAchievementRecord();
+  const today = todayDateString();
+  if (r.lastInsectVisitDate === today) {
+    return {
+      consecutiveDays: r.insectConsecutiveDays ?? 0,
+      justUnlocked: false,
+      coinsAwarded: 0,
+    };
+  }
+  const last = r.lastInsectVisitDate ?? "";
+  const daysDiff = last ? daysBetween(last, today) : 1;
+  r.insectConsecutiveDays = (r.insectConsecutiveDays ?? 0) + (daysDiff === 1 ? 1 : 0);
+  if (daysDiff !== 1) r.insectConsecutiveDays = 1;
+  r.lastInsectVisitDate = today;
+  let justUnlocked = false;
+  let coinsAwarded = 0;
+  if ((r.insectConsecutiveDays ?? 0) >= 7 && !(r.insectStreak7Unlocked ?? false)) {
+    r.insectStreak7Unlocked = true;
+    r.insectStreak7UnlockedAt = Date.now();
+    await addCoins(UNLOCK_COINS);
+    justUnlocked = true;
+    coinsAwarded = UNLOCK_COINS;
+  }
+  await saveAchievements(r);
+  return { consecutiveDays: r.insectConsecutiveDays ?? 0, justUnlocked, coinsAwarded };
+}
+
+/** 蟲屋：第一次開始飼養時呼叫；解鎖並發代幣 */
+export async function recordFirstInsectStart(): Promise<{ justUnlocked: boolean; coinsAwarded: number }> {
+  if (typeof window === "undefined") return { justUnlocked: false, coinsAwarded: 0 };
+  const r = await getAchievementRecord();
+  if (r.insectFirstStartUnlocked) return { justUnlocked: false, coinsAwarded: 0 };
+  r.insectFirstStartUnlocked = true;
+  r.insectFirstStartUnlockedAt = Date.now();
+  await saveAchievements(r);
+  await addCoins(UNLOCK_COINS);
+  return { justUnlocked: true, coinsAwarded: UNLOCK_COINS };
+}
+
+/** 蟲屋：除蟎成功時呼叫；達 3 次解鎖並發代幣 */
+export async function incrementInsectMiteRemoved(): Promise<{ justUnlocked: boolean; coinsAwarded: number }> {
+  if (typeof window === "undefined") return { justUnlocked: false, coinsAwarded: 0 };
+  const r = await getAchievementRecord();
+  r.insectMiteRemovedCount = (r.insectMiteRemovedCount ?? 0) + 1;
+  let justUnlocked = false;
+  let coinsAwarded = 0;
+  if ((r.insectMiteRemovedCount ?? 0) >= 3 && !(r.insectMiteRemoved3Unlocked ?? false)) {
+    r.insectMiteRemoved3Unlocked = true;
+    r.insectMiteRemoved3UnlockedAt = Date.now();
+    await addCoins(UNLOCK_COINS);
+    justUnlocked = true;
+    coinsAwarded = UNLOCK_COINS;
+  }
+  await saveAchievements(r);
+  return { justUnlocked, coinsAwarded };
+}
+
+/** 蟲屋：餵食成功時呼叫；達 10 次解鎖並發代幣 */
+export async function incrementInsectFeedCount(): Promise<{ justUnlocked: boolean; coinsAwarded: number }> {
+  if (typeof window === "undefined") return { justUnlocked: false, coinsAwarded: 0 };
+  const r = await getAchievementRecord();
+  r.insectFeedCount = (r.insectFeedCount ?? 0) + 1;
+  let justUnlocked = false;
+  let coinsAwarded = 0;
+  if ((r.insectFeedCount ?? 0) >= 10 && !(r.insectFeed10Unlocked ?? false)) {
+    r.insectFeed10Unlocked = true;
+    r.insectFeed10UnlockedAt = Date.now();
+    await addCoins(UNLOCK_COINS);
+    justUnlocked = true;
+    coinsAwarded = UNLOCK_COINS;
+  }
+  await saveAchievements(r);
+  return { justUnlocked, coinsAwarded };
+}
+
+/** 蟲屋：放生成功時呼叫；第 1 次與達 3 次解鎖並發代幣 */
+export async function incrementInsectReleaseCount(): Promise<{
+  release1JustUnlocked?: boolean;
+  release3JustUnlocked?: boolean;
+  coinsAwarded: number;
+}> {
+  if (typeof window === "undefined") return { coinsAwarded: 0 };
+  const r = await getAchievementRecord();
+  r.insectReleaseCount = (r.insectReleaseCount ?? 0) + 1;
+  let coinsAwarded = 0;
+  let release1JustUnlocked = false;
+  let release3JustUnlocked = false;
+  if (!(r.insectRelease1Unlocked ?? false)) {
+    r.insectRelease1Unlocked = true;
+    r.insectRelease1UnlockedAt = Date.now();
+    await addCoins(UNLOCK_COINS);
+    coinsAwarded += UNLOCK_COINS;
+    release1JustUnlocked = true;
+  }
+  if ((r.insectReleaseCount ?? 0) >= 3 && !(r.insectRelease3Unlocked ?? false)) {
+    r.insectRelease3Unlocked = true;
+    r.insectRelease3UnlockedAt = Date.now();
+    await addCoins(UNLOCK_COINS);
+    coinsAwarded += UNLOCK_COINS;
+    release3JustUnlocked = true;
+  }
+  await saveAchievements(r);
+  return {
+    ...(release1JustUnlocked && { release1JustUnlocked: true }),
+    ...(release3JustUnlocked && { release3JustUnlocked: true }),
+    coinsAwarded,
+  };
+}
+
+/** 蟲屋：養過 2 種昆蟲時解鎖；在 startInsect 成功後依 getRaisedInsectIds 呼叫 */
+export async function checkInsectTypes2Achievement(): Promise<{ justUnlocked: boolean; coinsAwarded: number }> {
+  if (typeof window === "undefined") return { justUnlocked: false, coinsAwarded: 0 };
+  const r = await getAchievementRecord();
+  if (r.insectTypes2Unlocked) return { justUnlocked: false, coinsAwarded: 0 };
+  const raised = await getRaisedInsectIds();
+  if (raised.length < 2) return { justUnlocked: false, coinsAwarded: 0 };
+  r.insectTypes2Unlocked = true;
+  r.insectTypes2UnlockedAt = Date.now();
+  await saveAchievements(r);
+  await addCoins(PLANTED_6_COINS);
+  return { justUnlocked: true, coinsAwarded: PLANTED_6_COINS };
 }

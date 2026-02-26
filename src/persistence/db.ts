@@ -169,6 +169,35 @@ export interface AchievementRecord {
   todayStreak7UnlockedAt?: number;
   /** 曾種過的種子 ID 列表（商店不再販賣） */
   plantedSeedIds?: string[];
+  /** 蟲屋：第一次飼養解鎖 */
+  insectFirstStartUnlocked?: boolean;
+  insectFirstStartUnlockedAt?: number;
+  /** 蟲屋：連續 7 天進蟲屋 */
+  insectStreak7Unlocked?: boolean;
+  insectStreak7UnlockedAt?: number;
+  lastInsectVisitDate?: string;
+  insectConsecutiveDays?: number;
+  /** 蟲屋：除蟎次數累計 */
+  insectMiteRemovedCount?: number;
+  /** 蟲屋：除蟎 3 次 */
+  insectMiteRemoved3Unlocked?: boolean;
+  insectMiteRemoved3UnlockedAt?: number;
+  /** 蟲屋：餵食次數累計 */
+  insectFeedCount?: number;
+  /** 蟲屋：餵食 10 次 */
+  insectFeed10Unlocked?: boolean;
+  insectFeed10UnlockedAt?: number;
+  /** 蟲屋：放生次數累計 */
+  insectReleaseCount?: number;
+  /** 蟲屋：第一次放生 */
+  insectRelease1Unlocked?: boolean;
+  insectRelease1UnlockedAt?: number;
+  /** 蟲屋：放生 3 次 */
+  insectRelease3Unlocked?: boolean;
+  insectRelease3UnlockedAt?: number;
+  /** 蟲屋：養過 2 種昆蟲（鍬形蟲+蝴蝶） */
+  insectTypes2Unlocked?: boolean;
+  insectTypes2UnlockedAt?: number;
 }
 
 let dbPromise: ReturnType<typeof openDB> | null = null;

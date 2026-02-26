@@ -2,9 +2,19 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getInsect, startInsect, feedInsect, releaseInsect, removeMites, cleanWithShovel, cleanWithClips, useGrowthMedicine, clearInsectWithoutRelease, SHOVEL_COOLDOWN_MS, DIRTY_HABITAT_AFTER_MS } from "@/src/persistence/insect";
 import { getInventoryState } from "@/src/persistence/inventory";
+import {
+  getAchievements,
+  recordInsectVisit,
+  recordFirstInsectStart,
+  checkInsectTypes2Achievement,
+  incrementInsectMiteRemoved,
+  incrementInsectFeedCount,
+  incrementInsectReleaseCount,
+  type AchievementState,
+} from "@/src/persistence/achievements";
 import { unlockAudio, playSpraySound, playSoilSound, playSparkleSound, playCelebrationSound } from "@/src/lib/sound";
 
 const INSECT_ASSETS = "/insert-assets";
@@ -48,15 +58,34 @@ export default function InsectPage() {
   const [showChangeInsectModal, setShowChangeInsectModal] = useState(false);
   const [changeInsectSelected, setChangeInsectSelected] = useState<"stag_beetle" | "butterfly" | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  /** 蟲屋成就（用於成就徽章區塊） */
+  const [achievements, setAchievements] = useState<AchievementState | null>(null);
+  /** 合照：成蟲階段與昆蟲自拍合成 */
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [photoCompositeBlob, setPhotoCompositeBlob] = useState<Blob | null>(null);
+  const photoVideoRef = useRef<HTMLVideoElement>(null);
+  const photoStreamRef = useRef<MediaStream | null>(null);
+  const photoPreviewUrl = useMemo(
+    () => (photoCompositeBlob ? URL.createObjectURL(photoCompositeBlob) : null),
+    [photoCompositeBlob]
+  );
+  useEffect(() => () => {
+    if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+  }, [photoPreviewUrl]);
 
   const load = useCallback(async () => {
     try {
-      const [ins, inv] = await Promise.all([getInsect(), getInventoryState()]);
+      const [ins, inv, ach] = await Promise.all([getInsect(), getInventoryState(), getAchievements()]);
       setInsect(ins);
       setInventory(inv);
+      setAchievements(ach);
+      await recordInsectVisit();
+      const again = await getAchievements();
+      setAchievements(again);
     } catch {
       setInsect(null);
       setInventory(null);
+      setAchievements(null);
     }
   }, []);
 
@@ -93,6 +122,8 @@ export default function InsectPage() {
     async (insectId: "stag_beetle" | "butterfly") => {
       const result = await startInsect(insectId);
       if (result.success) {
+        await recordFirstInsectStart();
+        await checkInsectTypes2Achievement();
         showMessage(insectId === "butterfly" ? "開始飼養蝴蝶～" : "開始飼養鍬形蟲～");
         load();
       } else {
@@ -112,6 +143,8 @@ export default function InsectPage() {
       }
       const startResult = await startInsect(changeInsectSelected);
       if (startResult.success) {
+        await recordFirstInsectStart();
+        await checkInsectTypes2Achievement();
         showMessage(changeInsectSelected === "butterfly" ? "已改養蝴蝶～" : "已改養鍬形蟲～");
         setShowChangeInsectModal(false);
         setChangeInsectSelected(null);
@@ -130,9 +163,10 @@ export default function InsectPage() {
       showMessage(result.message ?? "餵食失敗");
       return;
     }
+    const ach = await incrementInsectFeedCount();
     setAnimating("feed");
     const soundMs = await playSparkleSound();
-    showMessage("餵食成功～");
+    showMessage(ach.justUnlocked ? "餵食成功～解鎖成就獲得代幣！" : "餵食成功～");
     setTimeout(() => {
       setAnimating(null);
       load();
@@ -162,9 +196,10 @@ export default function InsectPage() {
       showMessage(result.message ?? "除蟎失敗");
       return;
     }
+    const ach = await incrementInsectMiteRemoved();
     setAnimating("spray");
     const soundMs = await playSpraySound();
-    showMessage("除蟎完成～");
+    showMessage(ach.justUnlocked ? "除蟎完成～解鎖成就獲得代幣！" : "除蟎完成～");
     setTimeout(() => {
       setAnimating(null);
       load();
@@ -210,14 +245,136 @@ export default function InsectPage() {
       showMessage(result.message ?? "放生失敗");
       return;
     }
+    const ach = await incrementInsectReleaseCount();
+    const totalCoins = (result.coinsAwarded ?? 0) + (ach.coinsAwarded ?? 0);
     playCelebrationSound();
     setShowReleaseCelebration(true);
-    showMessage(`放生成功！獲得 ${result.coinsAwarded ?? 0} 代幣`);
+    showMessage(`放生成功！獲得 ${totalCoins} 代幣`);
     setTimeout(() => {
       setShowReleaseCelebration(false);
       load();
     }, 1800);
   }, [load]);
+
+  /** 合照模態：開啟時啟動相機，關閉時停止 */
+  useEffect(() => {
+    if (!showPhotoModal) {
+      photoStreamRef.current?.getTracks().forEach((t) => t.stop());
+      photoStreamRef.current = null;
+      return;
+    }
+    setPhotoCompositeBlob(null);
+    let stream: MediaStream | null = null;
+    navigator.mediaDevices
+      .getUserMedia({ video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } } })
+      .then((s) => {
+        stream = s;
+        photoStreamRef.current = s;
+        if (photoVideoRef.current) {
+          photoVideoRef.current.srcObject = s;
+        }
+      })
+      .catch(() => {
+        showMessage("無法使用相機，請允許相機權限");
+        setShowPhotoModal(false);
+      });
+    return () => {
+      stream?.getTracks().forEach((t) => t.stop());
+    };
+  }, [showPhotoModal]);
+
+  const handleTakePhoto = useCallback(() => {
+    const video = photoVideoRef.current;
+    if (!video || video.readyState < 2) return;
+    const insectId = insect?.insectId ?? "stag_beetle";
+    const insectPath =
+      insectId === "butterfly"
+        ? `${BUTTERFLY_BASE}/butterfly_5.png`
+        : `${STAG_BEETLE_BASE}/stag_beetle_5.png`;
+    const insectUrl = typeof window !== "undefined" ? window.location.origin + insectPath : insectPath;
+    const w = 600;
+    const h = 800;
+    const maxInsectH = h / 3;
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const drawSelfieAsBackground = (mirror: boolean) => {
+      const vw = video.videoWidth || 640;
+      const vh = video.videoHeight || 480;
+      const temp = document.createElement("canvas");
+      temp.width = vw;
+      temp.height = vh;
+      const tCtx = temp.getContext("2d");
+      if (!tCtx) return;
+      tCtx.drawImage(video, 0, 0, vw, vh);
+      const scale = Math.max(w / vw, h / vh);
+      const destW = vw * scale;
+      const destH = vh * scale;
+      const destX = (w - destW) / 2;
+      const destY = (h - destH) / 2;
+      if (mirror) {
+        ctx.save();
+        ctx.translate(w / 2, h / 2);
+        ctx.scale(-1, 1);
+        ctx.translate(-w / 2, -h / 2);
+        ctx.drawImage(temp, 0, 0, vw, vh, destX, destY, destW, destH);
+        ctx.restore();
+      } else {
+        ctx.drawImage(temp, 0, 0, vw, vh, destX, destY, destW, destH);
+      }
+    };
+
+    const insectImg = new window.Image();
+    insectImg.onload = () => {
+      drawSelfieAsBackground(true);
+      const scale = Math.min(w / insectImg.naturalWidth, maxInsectH / insectImg.naturalHeight);
+      const dw = insectImg.naturalWidth * scale;
+      const dh = insectImg.naturalHeight * scale;
+      const dx = (w - dw) / 2;
+      const dy = h - dh;
+      ctx.drawImage(insectImg, 0, 0, insectImg.naturalWidth, insectImg.naturalHeight, dx, dy, dw, dh);
+      canvas.toBlob(
+        (blob) => {
+          if (blob) setPhotoCompositeBlob(blob);
+        },
+        "image/png",
+        0.92
+      );
+    };
+    insectImg.onerror = () => {
+      drawSelfieAsBackground(true);
+      canvas.toBlob((blob) => blob && setPhotoCompositeBlob(blob), "image/png", 0.92);
+    };
+    insectImg.src = insectUrl;
+  }, [insect]);
+
+  const handleDownloadPhoto = useCallback(() => {
+    if (!photoCompositeBlob) return;
+    const url = URL.createObjectURL(photoCompositeBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "與昆蟲合照.png";
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [photoCompositeBlob]);
+
+  const handleSharePhoto = useCallback(async () => {
+    if (!photoCompositeBlob) return;
+    const file = new File([photoCompositeBlob], "與昆蟲合照.png", { type: "image/png" });
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: "與昆蟲合照" });
+        setShowPhotoModal(false);
+      } catch (e) {
+        if ((e as Error).name !== "AbortError") showMessage("分享失敗");
+      }
+    } else {
+      handleDownloadPhoto();
+    }
+  }, [photoCompositeBlob, handleDownloadPhoto]);
 
   const hasHabitat = inventory?.hasInsectHabitat ?? false;
   const hasStagBeetleLarva = (inventory?.stagBeetleLarva ?? 0) > 0;
@@ -242,9 +399,18 @@ export default function InsectPage() {
           ← 回首頁
         </Link>
         <h1 className="text-lg font-bold text-[var(--foreground)] sm:text-xl">🪲 蟲屋</h1>
-        <Link href="/shop?from=insect" className="text-sm font-medium text-[var(--primary)] hover:underline">
-          商店
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowPhotoModal(true)}
+            className="text-sm font-medium text-gray-500 hover:text-gray-700 underline"
+          >
+            測試合照
+          </button>
+          <Link href="/shop?from=insect" className="text-sm font-medium text-[var(--primary)] hover:underline">
+            商店
+          </Link>
+        </div>
       </header>
 
       <main className="flex flex-1 flex-col items-center px-4 py-6 sm:px-6 sm:py-8">
@@ -563,14 +729,24 @@ export default function InsectPage() {
                 </button>
               )}
               {isAdult && (
-                <button
-                  type="button"
-                  onClick={handleRelease}
-                  disabled={animating !== null}
-                  className="min-h-[48px] rounded-2xl bg-emerald-600 px-6 font-bold text-white shadow-sm disabled:opacity-50 hover:bg-emerald-700 active:scale-[0.98] disabled:cursor-not-allowed"
-                >
-                  🦋 放生（獲得代幣）
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowPhotoModal(true)}
+                    disabled={animating !== null}
+                    className="min-h-[48px] rounded-2xl border-2 border-amber-500 bg-amber-50 px-6 font-bold text-amber-800 shadow-sm disabled:opacity-50 hover:bg-amber-100 active:scale-[0.98] disabled:cursor-not-allowed"
+                  >
+                    📷 合照
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRelease}
+                    disabled={animating !== null}
+                    className="min-h-[48px] rounded-2xl bg-emerald-600 px-6 font-bold text-white shadow-sm disabled:opacity-50 hover:bg-emerald-700 active:scale-[0.98] disabled:cursor-not-allowed"
+                  >
+                    🦋 放生（獲得代幣）
+                  </button>
+                </>
               )}
               <button
                 type="button"
@@ -586,6 +762,116 @@ export default function InsectPage() {
               成長階段：{STAGE_NAMES[insect.growthStage] ?? "?"}（{insect.growthStage}/5）
               {insect.feedCount != null && insect.feedCount > 0 && ` · 餵食 ${insect.feedCount} 次`}
             </p>
+          </div>
+        )}
+
+        {achievements && (
+          <div className="mt-6 w-full max-w-md rounded-2xl border border-amber-200 bg-amber-50/80 p-3 sm:p-4">
+            <h2 className="mb-2 text-center text-sm font-bold text-amber-900 sm:text-base">🏅 成就徽章</h2>
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              <div
+                className={`rounded-xl border-2 px-3 py-2 text-center text-xs sm:text-sm ${
+                  achievements.insectFirstStartUnlocked
+                    ? "border-amber-400 bg-amber-100 text-amber-900"
+                    : "border-gray-200 bg-white/60 text-gray-500"
+                }`}
+                title="第一次飼養"
+              >
+                <span className="font-semibold">🪲 第一次飼養</span>
+                {achievements.insectFirstStartUnlocked && <span className="ml-1">✓</span>}
+              </div>
+              <div
+                className={`rounded-xl border-2 px-3 py-2 text-center text-xs sm:text-sm ${
+                  achievements.insectStreak7Unlocked
+                    ? "border-amber-400 bg-amber-100 text-amber-900"
+                    : "border-gray-200 bg-white/60 text-gray-500"
+                }`}
+                title="連續 7 天進蟲屋"
+              >
+                <span className="font-semibold">📅 連續 7 天進蟲屋</span>
+                {achievements.insectStreak7Unlocked ? (
+                  <span className="ml-1">✓</span>
+                ) : (
+                  <span className="block text-xs">({achievements.insectConsecutiveDays}/7 天)</span>
+                )}
+              </div>
+              <div
+                className={`rounded-xl border-2 px-3 py-2 text-center text-xs sm:text-sm ${
+                  achievements.insectMiteRemoved3Unlocked
+                    ? "border-amber-400 bg-amber-100 text-amber-900"
+                    : "border-gray-200 bg-white/60 text-gray-500"
+                }`}
+                title="除蟎 3 次"
+              >
+                <span className="font-semibold">🧴 除蟎 3 次</span>
+                {achievements.insectMiteRemoved3Unlocked ? (
+                  <span className="ml-1">✓</span>
+                ) : (
+                  <span className="block text-xs">({achievements.insectMiteRemovedCount}/3)</span>
+                )}
+              </div>
+              <div
+                className={`rounded-xl border-2 px-3 py-2 text-center text-xs sm:text-sm ${
+                  achievements.insectFeed10Unlocked
+                    ? "border-amber-400 bg-amber-100 text-amber-900"
+                    : "border-gray-200 bg-white/60 text-gray-500"
+                }`}
+                title="餵食 10 次"
+              >
+                <span className="font-semibold">🍎 餵食 10 次</span>
+                {achievements.insectFeed10Unlocked ? (
+                  <span className="ml-1">✓</span>
+                ) : (
+                  <span className="block text-xs">({achievements.insectFeedCount}/10)</span>
+                )}
+              </div>
+              <div
+                className={`rounded-xl border-2 px-3 py-2 text-center text-xs sm:text-sm ${
+                  achievements.insectRelease1Unlocked
+                    ? "border-amber-400 bg-amber-100 text-amber-900"
+                    : "border-gray-200 bg-white/60 text-gray-500"
+                }`}
+                title="第一次放生"
+              >
+                <span className="font-semibold">🦋 第一次放生</span>
+                {achievements.insectRelease1Unlocked ? (
+                  <span className="ml-1">✓</span>
+                ) : (
+                  <span className="block text-xs">({achievements.insectReleaseCount}/1)</span>
+                )}
+              </div>
+              <div
+                className={`rounded-xl border-2 px-3 py-2 text-center text-xs sm:text-sm ${
+                  achievements.insectRelease3Unlocked
+                    ? "border-amber-400 bg-amber-100 text-amber-900"
+                    : "border-gray-200 bg-white/60 text-gray-500"
+                }`}
+                title="放生 3 次"
+              >
+                <span className="font-semibold">🌿 放生 3 次</span>
+                {achievements.insectRelease3Unlocked ? (
+                  <span className="ml-1">✓</span>
+                ) : (
+                  <span className="block text-xs">({achievements.insectReleaseCount}/3)</span>
+                )}
+              </div>
+              <div
+                className={`rounded-xl border-2 px-3 py-2 text-center text-xs sm:text-sm col-span-2 ${
+                  achievements.insectTypes2Unlocked
+                    ? "border-amber-400 bg-amber-100 text-amber-900"
+                    : "border-gray-200 bg-white/60 text-gray-500"
+                }`}
+                title="養過 2 種昆蟲"
+              >
+                <span className="font-semibold">🪱 養過 2 種昆蟲</span>
+                {achievements.insectTypes2Unlocked ? (
+                  <span className="ml-1">✓</span>
+                ) : (
+                  <span className="block text-xs">(養過 {achievements.insectTypesRaisedCount}/2 種)</span>
+                )}
+              </div>
+            </div>
+            <p className="mt-2 text-center text-xs text-amber-800">解鎖成就可獲得 2～5 代幣</p>
           </div>
         )}
 
@@ -660,6 +946,93 @@ export default function InsectPage() {
                     </button>
                   </div>
                 </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 合照模態：成蟲與自拍合成 */}
+        {showPhotoModal && (
+          <div
+            className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/70 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="insect-photo-modal-title"
+          >
+            <div className="flex w-full max-w-lg flex-col gap-4 rounded-2xl border-2 border-amber-200 bg-white p-4 shadow-xl">
+              <h2 id="insect-photo-modal-title" className="text-center text-lg font-bold text-[var(--foreground)]">
+                📷 與昆蟲合照
+              </h2>
+              {!photoCompositeBlob ? (
+                <>
+                  <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-gray-900">
+                    <video
+                      ref={photoVideoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="h-full w-full object-cover"
+                      style={{ transform: "scaleX(-1)" }}
+                    />
+                  </div>
+                  <p className="text-center text-sm text-gray-600">對準鏡頭後按「拍照」</p>
+                  <div className="flex justify-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleTakePhoto}
+                      className="min-h-[48px] rounded-xl bg-amber-600 px-6 font-bold text-white hover:bg-amber-700"
+                    >
+                      拍照
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowPhotoModal(false)}
+                      className="min-h-[48px] rounded-xl border-2 border-gray-300 px-6 font-semibold text-gray-700 hover:bg-gray-50"
+                    >
+                      取消
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-amber-50">
+                    {photoPreviewUrl && (
+                      <img
+                        src={photoPreviewUrl}
+                        alt="與昆蟲合照"
+                        className="h-full w-full object-contain"
+                      />
+                    )}
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleDownloadPhoto}
+                      className="min-h-[48px] rounded-xl bg-[var(--primary)] px-6 font-bold text-white hover:bg-[var(--primary-hover)]"
+                    >
+                      下載
+                    </button>
+                    {typeof navigator !== "undefined" && typeof navigator.share === "function" && (
+                      <button
+                        type="button"
+                        onClick={handleSharePhoto}
+                        className="min-h-[48px] rounded-xl bg-amber-600 px-6 font-bold text-white hover:bg-amber-700"
+                      >
+                        儲存／分享
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowPhotoModal(false);
+                        setPhotoCompositeBlob(null);
+                      }}
+                      className="min-h-[48px] rounded-xl border-2 border-gray-300 px-6 font-semibold text-gray-700 hover:bg-gray-50"
+                    >
+                      關閉
+                    </button>
+                  </div>
+                </>
               )}
             </div>
           </div>
