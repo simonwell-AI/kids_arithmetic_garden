@@ -30,9 +30,9 @@ const STREAK_BONUS_THRESHOLD = 3;
 const STREAK_BONUS_POINTS = 1;
 /** 堆疊上限：超過即 Game Over */
 const MAX_PILE = Math.ceil(GROUND_Y / BLOCK_HEIGHT);
-/** 遊戲結束時代幣換算：每 SCORE_PER_COIN 分換 1 代幣，上限 COIN_CAP */
+/** 遊戲結束時代幣換算：每 SCORE_PER_COIN 分換 1 代幣，上限 COIN_CAP（調高讓高分能拿到更多代幣） */
 const SCORE_PER_COIN = 10;
-const COIN_CAP = 10;
+const COIN_CAP = 25;
 /** 連對 3、6、9…題時加倍：每 3 題倍率 ×2（3→2x, 6→4x, 9→8x） */
 const STREAK_DOUBLE_EVERY = 3;
 
