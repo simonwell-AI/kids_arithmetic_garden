@@ -14,6 +14,7 @@ import {
   removeInsecticide,
   removeInsectFood,
   removeMiteSpray,
+  removeAdvancedInsectGrowthMedicine,
   removeStagBeetleLarva,
   removeSeed,
   removeTool,
@@ -42,6 +43,7 @@ function getShopItemIcon(item: ShopItem): string {
   if (item.type === "insect_larva") return "/insert-assets/stag_beetle/stag_beetle_1.png";
   if (item.type === "insect_habitat") return "/insert-assets/habitat_empty.png";
   if (item.type === "mite_spray") return "/insert-assets/mite_spray.png";
+  if (item.type === "insect_growth_medicine") return "/insert-assets/advanced_insect_growth_medicine.png";
   if (item.type === "insect_tool" && item.toolImagePath) return item.toolImagePath;
   if (item.type === "backpack_expand") return DEFAULT_BACKPACK_IMAGE;
   if (item.type === "tool" && item.toolImagePath) return item.toolImagePath;
@@ -83,6 +85,7 @@ export default function ShopPage() {
         insecticide: 0,
         insectFood: 0,
         miteSpray: 0,
+        advancedInsectGrowthMedicine: 0,
         stagBeetleLarva: 0,
         hasInsectHabitat: false,
         seeds: {},
@@ -217,6 +220,7 @@ export default function ShopPage() {
                 高級肥料 × {inventory.fertilizerPremium} · 殺蟲劑 × {inventory.insecticide}
                 {(inventory.insectFood ?? 0) > 0 && ` · 昆蟲飼料 × ${inventory.insectFood}`}
                 {(inventory.miteSpray ?? 0) > 0 && ` · 除蟎劑 × ${inventory.miteSpray}`}
+                {(inventory.advancedInsectGrowthMedicine ?? 0) > 0 && ` · 高級昆蟲成長藥 × ${inventory.advancedInsectGrowthMedicine}`}
                 {(inventory.stagBeetleLarva ?? 0) > 0 && ` · 鍬形蟲幼蟲 × ${inventory.stagBeetleLarva}`}
                 {inventory.hasInsectHabitat && " · 飼養箱 ✓"}
                 {Object.entries(inventory.seeds)
@@ -333,6 +337,20 @@ export default function ShopPage() {
                         className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
                       >
                         除蟎劑 × {inventory.miteSpray} 丟掉 1
+                      </button>
+                    )}
+                    {(inventory.advancedInsectGrowthMedicine ?? 0) > 0 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDiscardConfirm({
+                            label: "高級昆蟲成長藥",
+                            execute: () => removeAdvancedInsectGrowthMedicine(1),
+                          })
+                        }
+                        className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                      >
+                        高級昆蟲成長藥 × {inventory.advancedInsectGrowthMedicine} 丟掉 1
                       </button>
                     )}
                     {(inventory.stagBeetleLarva ?? 0) > 0 && (

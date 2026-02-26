@@ -1,5 +1,5 @@
 import { getDB, STORE_INSECT, INSECT_KEY, type InsectRecord } from "./db";
-import { useInsectFood, useMiteSpray, useStagBeetleLarva, getInventoryState, hasTool, useTool } from "./inventory";
+import { useInsectFood, useMiteSpray, useStagBeetleLarva, getInventoryState, hasTool, useTool, useAdvancedInsectGrowthMedicine } from "./inventory";
 import { addCoins } from "./wallet";
 
 const INSECT_MAX_STAGE = 5;
@@ -12,11 +12,13 @@ const GROWTH_PER_DAY_NATURAL = 0.08;
 /** 有蟎時成長率係數 */
 const MITE_PENALTY_MULTIPLIER = 0.6;
 /** 未清潔糞便超過此時長視為生病，成長變慢（供 UI 預警倒數用） */
-export const DIRTY_HABITAT_AFTER_MS = 24 * 60 * 60 * 1000; // 24 小時
+export const DIRTY_HABITAT_AFTER_MS = 1 * 60 * 60 * 1000; // 1 小時
 /** 生病（飼養箱髒）時成長率係數 */
 const SICK_PENALTY_MULTIPLIER = 0.6;
 /** 進入蟲屋時觸發蟎的機率（幼蟲/蛹階段） */
 const MITE_PROBABILITY = 0.15;
+/** 進入蟲屋時隨機出現大便的機率（目前未生病時才擲骰） */
+const POOP_PROBABILITY = 0.15;
 /** 除蟎後多久內不再觸發（10 分鐘） */
 const MITE_COOLDOWN_MS = 10 * 60 * 1000;
 /** 昆蟲小鏟冷卻時間（30 分鐘） */
@@ -88,9 +90,14 @@ export async function getInsect(): Promise<{
   if (stage < INSECT_MAX_STAGE && !record.hasMites && miteCooldownOk && Math.random() < MITE_PROBABILITY) {
     record.hasMites = true;
   }
+
+  let dirty = isDirtyHabitat(record);
+  if (!dirty && Math.random() < POOP_PROBABILITY) {
+    record.lastClipsUsedAt = now - DIRTY_HABITAT_AFTER_MS - 60000;
+    dirty = true;
+  }
   await saveInsect(record);
 
-  const dirty = isDirtyHabitat(record);
   return {
     insectId: record.insectId,
     plantedAt: record.plantedAt,
@@ -213,6 +220,24 @@ export async function cleanWithClips(): Promise<{ success: boolean; message?: st
   if (!used) return { success: false, message: "無法使用夾子" };
   record.growthValue = Math.min(5, computeGrowthValue(record) + CLEAN_CLIPS_GROWTH_BONUS);
   record.lastClipsUsedAt = Date.now();
+  await saveInsect(record);
+  return { success: true };
+}
+
+/** 高級昆蟲成長藥：消耗 1 瓶，讓昆蟲直接進入下一成長階段 */
+export async function useGrowthMedicine(): Promise<{ success: boolean; message?: string }> {
+  if (typeof window === "undefined") return { success: false, message: "僅支援瀏覽器" };
+  const record = await getInsectRecord();
+  if (!record) return { success: false, message: "尚未開始飼養" };
+  const used = await useAdvancedInsectGrowthMedicine();
+  if (!used) return { success: false, message: "沒有高級昆蟲成長藥，請到商店購買" };
+  const currentValue = computeGrowthValue(record);
+  const currentStage = growthValueToStage(currentValue);
+  if (currentStage >= INSECT_MAX_STAGE) {
+    return { success: false, message: "已經是成蟲了，不需要再使用成長藥" };
+  }
+  /** 下一階段的最小成長值：階段 2=1、階段 3=2、…、階段 5=4 */
+  record.growthValue = Math.min(INSECT_MAX_STAGE, currentStage);
   await saveInsect(record);
   return { success: true };
 }

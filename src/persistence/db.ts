@@ -71,6 +71,8 @@ export interface InventoryRecord {
   stagBeetleLarva?: number;
   /** 是否擁有蟲屋飼養箱（買一次永久） */
   hasInsectHabitat?: boolean;
+  /** 高級昆蟲成長藥（蟲屋使用，增加成長值） */
+  advancedInsectGrowthMedicine?: number;
   seeds: Record<string, number>;
   tools?: Record<string, number>;
   wateringCans?: Record<string, number>;

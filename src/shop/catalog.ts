@@ -15,6 +15,7 @@ export type ShopItemType =
   | "insect_larva"
   | "insect_habitat"
   | "mite_spray"
+  | "insect_growth_medicine"
   | "insect_tool"
   | "backpack_expand"
   | "tool"
@@ -54,6 +55,7 @@ export const SHOP_CATALOG: ShopItem[] = [
   { id: "insect_larva", type: "insect_larva", name: "鍬形蟲幼蟲", price: 28 },
   { id: "insect_habitat", type: "insect_habitat", name: "鍬形蟲飼養箱", price: 45 },
   { id: "mite_spray", type: "mite_spray", name: "除蟎劑", price: 12 },
+  { id: "insect_growth_medicine", type: "insect_growth_medicine", name: "高級昆蟲成長藥", price: 150 },
   { id: "tool_insect_shovel", type: "insect_tool", name: "昆蟲小鏟", price: 10, toolId: "insect_shovel", toolImagePath: `${INSECT_ASSETS_BASE}/insect_shovel.png` },
   { id: "tool_insect_clips", type: "insect_tool", name: "昆蟲夾子", price: 10, toolId: "insect_clips", toolImagePath: `${INSECT_ASSETS_BASE}/insect_clips.png` },
   { id: "backpack_expand", type: "backpack_expand", name: "擴充背包", price: 20, capacityExpand: 5 },
@@ -75,7 +77,7 @@ export const SHOP_CATALOG: ShopItem[] = [
 export const SHOP_CATEGORIES: { key: string; label: string; types: ShopItemType[] }[] = [
   { key: "seed", label: "種子", types: ["seed"] },
   { key: "consumable", label: "消耗品", types: ["water", "fertilizer_basic", "fertilizer_premium", "insecticide"] },
-  { key: "insect", label: "蟲屋", types: ["insect_food", "insect_larva", "insect_habitat", "mite_spray", "insect_tool"] },
+  { key: "insect", label: "蟲屋", types: ["insect_food", "insect_larva", "insect_habitat", "mite_spray", "insect_growth_medicine", "insect_tool"] },
   { key: "tool", label: "園藝工具", types: ["tool"] },
   { key: "watering_can", label: "水壺外觀", types: ["watering_can"] },
   { key: "backpack", label: "背包", types: ["backpack_expand", "backpack"] },

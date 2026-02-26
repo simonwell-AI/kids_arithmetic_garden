@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
-import { getInsect, startInsect, feedInsect, releaseInsect, removeMites, cleanWithShovel, cleanWithClips, SHOVEL_COOLDOWN_MS, DIRTY_HABITAT_AFTER_MS } from "@/src/persistence/insect";
+import { getInsect, startInsect, feedInsect, releaseInsect, removeMites, cleanWithShovel, cleanWithClips, useGrowthMedicine, SHOVEL_COOLDOWN_MS, DIRTY_HABITAT_AFTER_MS } from "@/src/persistence/insect";
 import { getInventoryState } from "@/src/persistence/inventory";
 import { unlockAudio, playSpraySound, playSoilSound, playSparkleSound, playCelebrationSound } from "@/src/lib/sound";
 
@@ -15,11 +15,14 @@ const MITE_SPRAY_IMAGE = `${INSECT_ASSETS}/mite_spray.png`;
 const INSECT_SHOVEL_IMAGE = `${INSECT_ASSETS}/insect_shovel.png`;
 const INSECT_CLIPS_IMAGE = `${INSECT_ASSETS}/insect_clips.png`;
 const INSECT_POOP_IMAGE = `${INSECT_ASSETS}/insect_poop.png`;
+const INSECT_GROWTH_MEDICINE_IMAGE = `${INSECT_ASSETS}/advanced_insect_growth_medicine.png`;
 const MITES_IMAGE = `${INSECT_ASSETS}/mites.png`;
 
 const FEED_ANIMATION_MS = 1600;
 const SPRAY_ANIMATION_MS = 2400;
 const CLEAN_ANIMATION_MS = 1800;
+/** 高級昆蟲成長藥動畫時長（與高級肥料一致：3.2 秒） */
+const GROWTH_MEDICINE_ANIMATION_MS = 3200;
 
 /** 成長階段對應名稱（與 INSECT_STAG_BEETLE_PLAN 一致） */
 const STAGE_NAMES: Record<number, string> = {
@@ -30,10 +33,10 @@ const STAGE_NAMES: Record<number, string> = {
   5: "成蟲",
 };
 
-/** 生病預警顯示閾值：剩餘時間少於此時顯示「再 X 小時未清潔會生病」 */
-const DIRTY_WARNING_BEFORE_MS = 6 * 60 * 60 * 1000; // 6 小時
+/** 生病預警顯示閾值：剩餘時間少於此時顯示「再 X 分鐘/小時未清潔會生病」 */
+const DIRTY_WARNING_BEFORE_MS = 15 * 60 * 1000; // 15 分鐘
 
-type InsectAnimating = "feed" | "spray" | "clean_shovel" | "clean_clips" | null;
+type InsectAnimating = "feed" | "spray" | "clean_shovel" | "clean_clips" | "growth_medicine" | null;
 
 export default function InsectPage() {
   const [insect, setInsect] = useState<Awaited<ReturnType<typeof getInsect>>>(null);
@@ -112,6 +115,22 @@ export default function InsectPage() {
     }, Math.max(FEED_ANIMATION_MS, soundMs));
   }, [load]);
 
+  const handleGrowthMedicine = useCallback(async () => {
+    unlockAudio();
+    const result = await useGrowthMedicine();
+    if (!result.success) {
+      showMessage(result.message ?? "使用失敗");
+      return;
+    }
+    setAnimating("growth_medicine");
+    const soundMs = await playSparkleSound();
+    showMessage("使用高級成長藥，蟲蟲長大了一些～");
+    setTimeout(() => {
+      setAnimating(null);
+      load();
+    }, Math.max(GROWTH_MEDICINE_ANIMATION_MS, typeof soundMs === "number" ? soundMs : 0));
+  }, [load]);
+
   const handleSpray = useCallback(async () => {
     unlockAudio();
     const result = await removeMites();
@@ -181,6 +200,7 @@ export default function InsectPage() {
   const canStart = hasHabitat && hasLarva && !insect;
   const feedCount = inventory?.insectFood ?? 0;
   const miteSprayCount = inventory?.miteSpray ?? 0;
+  const growthMedicineCount = inventory?.advancedInsectGrowthMedicine ?? 0;
   const shovelCount = inventory?.tools?.insect_shovel ?? 0;
   const clipsCount = inventory?.tools?.insect_clips ?? 0;
   const isAdult = insect != null && insect.growthStage >= 5;
@@ -398,21 +418,22 @@ export default function InsectPage() {
               const lastCleanAt = insect.lastClipsUsedAt ?? insect.plantedAt;
               const msSinceClean = nowMs - lastCleanAt;
               const msUntilDirty = DIRTY_HABITAT_AFTER_MS - msSinceClean;
-              const hoursSinceClean = Math.floor(msSinceClean / (60 * 60 * 1000));
-              const hoursUntilDirty = Math.ceil(msUntilDirty / (60 * 60 * 1000));
+              const minutesUntilDirty = Math.ceil(msUntilDirty / (60 * 1000));
+              const minutesSinceClean = Math.floor(msSinceClean / (60 * 1000));
               if (msUntilDirty > 0 && msUntilDirty <= DIRTY_WARNING_BEFORE_MS) {
+                const timeLeftText = minutesUntilDirty < 60 ? `再 ${minutesUntilDirty} 分鐘` : `再 ${Math.ceil(minutesUntilDirty / 60)} 小時`;
                 return (
                   <p className="mt-3 rounded-xl bg-amber-50 border border-amber-200 px-4 py-2 text-center text-sm font-medium text-amber-900">
                     {insect.lastClipsUsedAt != null
-                      ? `距上次夾糞便已 ${hoursSinceClean} 小時，再 ${hoursUntilDirty} 小時未清潔會生病喔～`
-                      : `再 ${hoursUntilDirty} 小時未清潔糞便會生病喔，記得用夾子清潔～`}
+                      ? `距上次夾糞便已 ${minutesSinceClean} 分鐘，${timeLeftText}未清潔會生病喔～`
+                      : `${timeLeftText}未清潔糞便會生病喔，記得用夾子清潔～`}
                   </p>
                 );
               }
-              if (insect.lastClipsUsedAt == null && msSinceClean >= 12 * 60 * 60 * 1000) {
+              if (insect.lastClipsUsedAt == null && msSinceClean >= 30 * 60 * 1000) {
                 return (
                   <p className="mt-3 rounded-xl bg-amber-50/80 px-4 py-2 text-center text-sm text-amber-800">
-                    記得定期用夾子清潔糞便，超過 24 小時未清潔會生病喔。
+                    記得定期用夾子清潔糞便，超過 1 小時未清潔會生病喔。
                   </p>
                 );
               }
@@ -432,15 +453,28 @@ export default function InsectPage() {
                 </button>
               )}
               {!isAdult && (
-                <button
-                  type="button"
-                  onClick={handleFeed}
-                  disabled={animating !== null || feedCount < 1}
-                  title={feedCount < 1 ? "請到商店購買昆蟲飼料" : undefined}
-                  className="min-h-[48px] rounded-2xl bg-green-600 px-6 font-bold text-white shadow-sm disabled:opacity-50 hover:bg-green-700 active:scale-[0.98] disabled:cursor-not-allowed"
-                >
-                  🍎 餵食（× {feedCount}）
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={handleFeed}
+                    disabled={animating !== null || feedCount < 1}
+                    title={feedCount < 1 ? "請到商店購買昆蟲飼料" : undefined}
+                    className="min-h-[48px] rounded-2xl bg-green-600 px-6 font-bold text-white shadow-sm disabled:opacity-50 hover:bg-green-700 active:scale-[0.98] disabled:cursor-not-allowed"
+                  >
+                    🍎 餵食（× {feedCount}）
+                  </button>
+                  {growthMedicineCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleGrowthMedicine}
+                      disabled={animating !== null}
+                      title="使用高級昆蟲成長藥，增加較多成長值"
+                      className="min-h-[48px] rounded-2xl bg-emerald-700 px-6 font-bold text-emerald-100 shadow-sm disabled:opacity-50 hover:bg-emerald-800 active:scale-[0.98] disabled:cursor-not-allowed"
+                    >
+                      💊 成長藥（× {growthMedicineCount}）
+                    </button>
+                  )}
+                </>
               )}
               {shovelCount > 0 && (
                 <button
