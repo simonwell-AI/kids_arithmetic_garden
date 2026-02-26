@@ -606,7 +606,7 @@ export default function GardenPage() {
             <button
               type="button"
               onClick={() => setShowPhotoModal(true)}
-              className="text-sm font-medium text-gray-500 hover:text-gray-700 underline"
+              className="hidden text-sm font-medium text-gray-500 hover:text-gray-700 underline"
             >
               測試合照
             </button>
