@@ -437,6 +437,28 @@ export default function InsectPage() {
                     />
                   </div>
                 )}
+
+                {/* 高級成長藥動畫（飼養箱中央） */}
+                {animating === "growth_medicine" && (
+                  <div
+                    className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center"
+                    style={{ ["--growth-medicine-duration" as string]: `${GROWTH_MEDICINE_ANIMATION_MS}ms` }}
+                  >
+                    <Image
+                      src={INSECT_GROWTH_MEDICINE_IMAGE}
+                      alt=""
+                      width={80}
+                      height={80}
+                      className="insect-growth-medicine-bottle object-contain"
+                      unoptimized
+                    />
+                    <span className="insect-growth-medicine-sparkle absolute left-1/2 top-1/3 h-4 w-4 rounded-full bg-emerald-300/90" aria-hidden />
+                    <span className="insect-growth-medicine-sparkle absolute left-[42%] top-2/5 h-3 w-3 rounded-full bg-emerald-200/80" style={{ animationDelay: "0.2s" }} aria-hidden />
+                    <span className="insect-growth-medicine-sparkle absolute left-[58%] top-2/5 h-3 w-3 rounded-full bg-emerald-200/80" style={{ animationDelay: "0.25s" }} aria-hidden />
+                    <span className="insect-growth-medicine-sparkle absolute left-1/2 top-1/2 h-5 w-5 rounded-full bg-amber-200/70" style={{ animationDelay: "0.35s" }} aria-hidden />
+                    <span className="insect-growth-medicine-flash" aria-hidden />
+                  </div>
+                )}
               </div>
             </div>
 
