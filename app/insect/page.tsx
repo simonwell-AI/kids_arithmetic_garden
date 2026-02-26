@@ -242,7 +242,7 @@ export default function InsectPage() {
           ← 回首頁
         </Link>
         <h1 className="text-lg font-bold text-[var(--foreground)] sm:text-xl">🪲 蟲屋</h1>
-        <Link href="/shop" className="text-sm font-medium text-[var(--primary)] hover:underline">
+        <Link href="/shop?from=insect" className="text-sm font-medium text-[var(--primary)] hover:underline">
           商店
         </Link>
       </header>
@@ -270,7 +270,7 @@ export default function InsectPage() {
             <Image src={HABITAT_EMPTY} alt="空飼養箱" width={200} height={160} className="rounded-lg object-contain" unoptimized />
             <p className="text-gray-700">還沒有飼養箱喔！請先到商店購買「鍬形蟲飼養箱」才能養蟲。</p>
             <Link
-              href="/shop"
+              href="/shop?from=insect"
               className="min-h-[48px] rounded-xl bg-[var(--primary)] px-6 py-3 font-semibold text-white hover:bg-[var(--primary-hover)]"
             >
               前往商店
@@ -285,7 +285,7 @@ export default function InsectPage() {
               <>
                 <p className="text-gray-700">飼養箱是空的～請到商店購買「鍬形蟲幼蟲」或「蝴蝶蟲卵」後再開始飼養。</p>
                 <Link
-                  href="/shop"
+                  href="/shop?from=insect"
                   className="min-h-[48px] rounded-xl bg-[var(--primary)] px-6 py-3 font-semibold text-white hover:bg-[var(--primary-hover)]"
                 >
                   前往商店

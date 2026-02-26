@@ -52,7 +52,7 @@ export const SHOP_CATALOG: ShopItem[] = [
   { id: "fertilizer_basic", type: "fertilizer_basic", name: "一般肥料", price: 5 },
   { id: "fertilizer_premium", type: "fertilizer_premium", name: "高級肥料", price: 12 },
   { id: "insecticide", type: "insecticide", name: "殺蟲劑", price: 6 },
-  { id: "insect_food", type: "insect_food", name: "昆蟲飼料", price: 10 },
+  { id: "insect_food", type: "insect_food", name: "昆蟲飼料", price: 20 },
   { id: "insect_larva", type: "insect_larva", name: "鍬形蟲幼蟲", price: 28 },
   { id: "butterfly_egg", type: "butterfly_egg", name: "蝴蝶蟲卵", price: 50 },
   { id: "insect_habitat", type: "insect_habitat", name: "鍬形蟲飼養箱", price: 45 },

@@ -11,10 +11,14 @@ import {
 } from './difficulty';
 
 const OPS: Operation[] = ['add', 'sub', 'mul', 'div'];
+const OPS_NO_DIV: Operation[] = ['add', 'sub', 'mul'];
 
 function pickOperation(option: GenerateQuestionOptions['operation']): Operation {
   if (option === 'mixed') {
     return OPS[Math.floor(getRandom() * OPS.length)];
+  }
+  if (option === 'mixed_no_div') {
+    return OPS_NO_DIV[Math.floor(getRandom() * OPS_NO_DIV.length)];
   }
   return option;
 }

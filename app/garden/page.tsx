@@ -469,9 +469,14 @@ export default function GardenPage() {
     <div className="flex min-h-[100dvh] flex-col items-center bg-[var(--background)] px-4 py-8 sm:px-6 sm:py-10">
       {showCelebration && <CelebrationParticles />}
       <div className="flex w-full max-w-lg flex-col gap-6">
-        <Link href="/" className="font-semibold text-[var(--primary)] hover:underline">
-          ← 返回首頁
-        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Link href="/" className="font-semibold text-[var(--primary)] hover:underline">
+            ← 返回首頁
+          </Link>
+          <Link href="/shop?from=garden" className="font-semibold text-[var(--primary)] hover:underline">
+            商店
+          </Link>
+        </div>
         <h1 className="text-center text-2xl font-bold text-[var(--foreground)] sm:text-3xl">
           🌱 我的花園
         </h1>

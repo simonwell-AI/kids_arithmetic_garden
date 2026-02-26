@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getCoins, getPlantedSeedIds } from "@/src/persistence";
 import { getRaisedInsectIds } from "@/src/persistence/insect";
@@ -73,6 +74,8 @@ export default function ShopPage() {
   const prevCoinsRef = useRef<number | null>(null);
   const [showDiscardPanel, setShowDiscardPanel] = useState(false);
   const [discardConfirm, setDiscardConfirm] = useState<{ label: string; execute: () => Promise<void> } | null>(null);
+  const searchParams = useSearchParams();
+  const from = searchParams.get("from");
 
   const load = useCallback(async () => {
     try {
@@ -159,9 +162,21 @@ export default function ShopPage() {
     <div className="flex min-h-[100dvh] flex-col items-center bg-[var(--background)] px-4 py-8 sm:px-6 sm:py-10">
         <div className="flex w-full max-w-lg flex-col gap-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <Link href="/" className="font-semibold text-[var(--primary)] hover:underline">
-            ← 返回首頁
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href="/" className="font-semibold text-[var(--primary)] hover:underline">
+              ← 返回首頁
+            </Link>
+            {from === "garden" && (
+              <Link href="/garden" className="font-semibold text-green-700 hover:underline">
+                ← 返回花園
+              </Link>
+            )}
+            {from === "insect" && (
+              <Link href="/insect" className="font-semibold text-amber-700 hover:underline">
+                ← 返回蟲屋
+              </Link>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <span className="flex min-w-0 items-center gap-2 rounded-xl border-2 border-amber-200 bg-amber-50 px-4 py-2 font-bold text-amber-800 shadow-sm">
             <Image src={COIN_IMAGE} alt="" width={24} height={24} className="shrink-0 object-contain animate-coin-pulse" unoptimized />
@@ -514,10 +529,18 @@ export default function ShopPage() {
         )}
         <div className="flex flex-col gap-8">
           {getItemsByCategory(shopCatalog).map(({ key, label, items }) => (
-            <section key={key} className="flex flex-col gap-3">
-              <h2 className="border-b-2 border-[var(--primary)] pb-1.5 text-lg font-bold text-[var(--foreground)]">
+            <section
+              key={key}
+              className={`flex flex-col gap-3 ${key === "insect" ? "rounded-2xl border-2 border-amber-300 bg-amber-50/60 px-4 py-4 sm:px-5 sm:py-5" : ""}`}
+            >
+              <h2
+                className={`pb-1.5 text-lg font-bold ${key === "insect" ? "border-b-2 border-amber-400 text-amber-900" : "border-b-2 border-[var(--primary)] text-[var(--foreground)]"}`}
+              >
                 {label}
               </h2>
+              {key === "insect" && (
+                <p className="text-sm text-amber-800/90">蟲屋專用，與花園物品分開。</p>
+              )}
               {key === "tool" && (
                 <p className="text-sm text-gray-600">
                   肥料瓶、噴霧器、盆栽土在開花收成後會消耗，需再購買新的。
@@ -527,7 +550,11 @@ export default function ShopPage() {
                 {items.map((item) => (
                   <li
                     key={item.id}
-                    className="shop-product-card flex flex-col rounded-2xl border-2 border-gray-200 bg-white p-4 shadow-sm transition-all duration-200 hover:border-amber-200 hover:shadow-lg"
+                    className={`shop-product-card flex flex-col rounded-2xl border-2 p-4 shadow-sm transition-all duration-200 ${
+                      key === "insect"
+                        ? "border-amber-200 bg-white hover:border-amber-400 hover:shadow-lg"
+                        : "border-gray-200 bg-white hover:border-amber-200 hover:shadow-lg"
+                    }`}
                   >
                     <div className="mb-2 flex items-center gap-3">
                       <div className="shop-product-image-wrap relative h-12 w-12 shrink-0 overflow-hidden rounded-lg transition-transform duration-200">

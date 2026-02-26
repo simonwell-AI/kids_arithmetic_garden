@@ -1,7 +1,7 @@
 export type Operation = 'add' | 'sub' | 'mul' | 'div';
 
-/** 運算選項：單一運算或混合所有 */
-export type OperationOption = Operation | 'mixed';
+/** 運算選項：單一運算、混合所有、或混合不含除法 */
+export type OperationOption = Operation | 'mixed' | 'mixed_no_div';
 
 export type Difficulty = 'easy' | 'normal' | 'hard';
 
