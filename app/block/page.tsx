@@ -25,7 +25,7 @@ const BLOCK_HEIGHT = 56;
 /** 每 frame 下落像素（約 60fps）；調小 = 落地速度較慢 */
 const FALL_SPEED = 0.5;
 /** 連對幾題給加分 */
-const STREAK_BONUS_THRESHOLD = 3;
+const STREAK_BONUS_THRESHOLD = 4;
 /** 連對加分 */
 const STREAK_BONUS_POINTS = 1;
 /** 堆疊上限：超過即 Game Over */
@@ -33,14 +33,14 @@ const MAX_PILE = Math.ceil(GROUND_Y / BLOCK_HEIGHT);
 /** 遊戲結束時代幣換算：每 SCORE_PER_COIN 分換 1 代幣，上限 COIN_CAP（調高讓高分能拿到更多代幣） */
 const SCORE_PER_COIN = 10;
 const COIN_CAP = 25;
-/** 連對 3、6、9…題時加倍：每 3 題倍率 ×2（3→2x, 6→4x, 9→8x） */
-const STREAK_DOUBLE_EVERY = 3;
+/** 連對 5、10、15…題時加倍：每 5 題倍率 ×2（5→2x, 10→4x, 15→8x） */
+const STREAK_DOUBLE_EVERY = 5;
 
 const DEFAULT_OPTIONS = {
-  operation: "mixed_no_div" as const,
+  operation: "mixed" as const,
   rangeMin: 1,
-  rangeMax: 20,
-  difficulty: "easy" as const,
+  rangeMax: 30,
+  difficulty: "normal" as const,
 };
 
 /** 方塊顏色（像俄羅斯方塊一樣每塊不同） */
