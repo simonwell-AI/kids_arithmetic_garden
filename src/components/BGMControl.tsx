@@ -5,6 +5,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 const STORAGE_PLAYING = "bgm_playing";
 const STORAGE_TRACK = "bgm_track";
 const TRACKS = ["/sounds/bg_music_1.mp3", "/sounds/bg_music_2.mp3"] as const;
+/** 背景音樂音量 0～1 */
+const BGM_VOLUME = 0.2;
 type TrackIndex = 0 | 1;
 
 function loadStored(): { isPlaying: boolean; track: TrackIndex } {
@@ -33,7 +35,7 @@ export default function BGMControl() {
     if (audioRef.current) return audioRef.current;
     const audio = new Audio(TRACKS[0]);
     audio.loop = true;
-    audio.volume = 0.5;
+    audio.volume = BGM_VOLUME;
     audioRef.current = audio;
     return audio;
   }, []);
