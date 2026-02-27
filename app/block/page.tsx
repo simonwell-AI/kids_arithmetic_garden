@@ -39,8 +39,8 @@ const STREAK_DOUBLE_EVERY = 5;
 const DEFAULT_OPTIONS = {
   operation: "mixed" as const,
   rangeMin: 1,
-  rangeMax: 30,
-  difficulty: "normal" as const,
+  rangeMax: 50,
+  difficulty: "hard" as const,
 };
 
 /** 方塊顏色（像俄羅斯方塊一樣每塊不同） */
