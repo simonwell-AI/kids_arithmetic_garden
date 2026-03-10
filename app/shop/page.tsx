@@ -19,6 +19,7 @@ import {
   removeAdvancedInsectGrowthMedicine,
   removeStagBeetleLarva,
   removeButterflyEgg,
+  removeBeeEgg,
   removeSeed,
   removeTool,
   removeWateringCan,
@@ -45,6 +46,7 @@ function getShopItemIcon(item: ShopItem): string {
   if (item.type === "insect_food") return "/insert-assets/insect_food.png";
   if (item.type === "insect_larva") return "/insert-assets/stag_beetle/stag_beetle_1.png";
   if (item.type === "butterfly_egg") return "/insert-assets/butterfly/butterfly_1.png";
+  if (item.type === "bee_egg") return "/insert-assets/bee/bee_1.png";
   if (item.type === "insect_habitat") return "/insert-assets/habitat_empty.png";
   if (item.type === "mite_spray") return "/insert-assets/mite_spray.png";
   if (item.type === "insect_growth_medicine") return "/insert-assets/advanced_insect_growth_medicine.png";
@@ -155,6 +157,7 @@ function ShopPageContent() {
     if (item.type === "seed") return item.seedId != null && !plantedSeedIds.includes(item.seedId);
     if (item.type === "insect_larva" && raisedInsectIds.includes("stag_beetle")) return false;
     if (item.type === "butterfly_egg" && raisedInsectIds.includes("butterfly")) return false;
+    if (item.type === "bee_egg" && raisedInsectIds.includes("bee")) return false;
     return true;
   });
 
@@ -409,6 +412,20 @@ function ShopPageContent() {
                         className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
                       >
                         蝴蝶蟲卵 × {inventory.butterflyEgg} 丟掉 1
+                      </button>
+                    )}
+                    {(inventory.beeEgg ?? 0) > 0 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDiscardConfirm({
+                            label: "蜜蜂蟲卵",
+                            execute: () => removeBeeEgg(1),
+                          })
+                        }
+                        className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                      >
+                        蜜蜂蟲卵 × {inventory.beeEgg} 丟掉 1
                       </button>
                     )}
                     {Object.entries(inventory.seeds)

@@ -1,5 +1,5 @@
 import { getDB, STORE_INSECT, INSECT_KEY, type InsectRecord } from "./db";
-import { useInsectFood, useMiteSpray, useStagBeetleLarva, useButterflyEgg, getInventoryState, hasTool, useTool, useAdvancedInsectGrowthMedicine } from "./inventory";
+import { useInsectFood, useMiteSpray, useStagBeetleLarva, useButterflyEgg, useBeeEgg, getInventoryState, hasTool, useTool, useAdvancedInsectGrowthMedicine } from "./inventory";
 import { addCoins } from "./wallet";
 
 const INSECT_MAX_STAGE = 5;
@@ -166,6 +166,10 @@ export async function startInsect(insectId: string): Promise<{ success: boolean;
     if ((inv.butterflyEgg ?? 0) < 1) return { success: false, message: "需要蝴蝶蟲卵，請到商店購買" };
     const used = await useButterflyEgg();
     if (!used) return { success: false, message: "蝴蝶蟲卵不足" };
+  } else if (insectId === "bee") {
+    if ((inv.beeEgg ?? 0) < 1) return { success: false, message: "需要蜜蜂蟲卵，請到商店購買" };
+    const used = await useBeeEgg();
+    if (!used) return { success: false, message: "蜜蜂蟲卵不足" };
   } else {
     return { success: false, message: "不支援此昆蟲類型" };
   }

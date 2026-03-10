@@ -71,6 +71,8 @@ export interface InventoryRecord {
   stagBeetleLarva?: number;
   /** 蝴蝶蟲卵數量（商店購買） */
   butterflyEgg?: number;
+  /** 蜜蜂蟲卵數量（商店購買） */
+  beeEgg?: number;
   /** 是否擁有蟲屋飼養箱（買一次永久） */
   hasInsectHabitat?: boolean;
   /** 高級昆蟲成長藥（蟲屋使用，增加成長值） */
