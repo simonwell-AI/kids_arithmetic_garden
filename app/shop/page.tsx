@@ -103,6 +103,7 @@ function ShopPageContent() {
         advancedInsectGrowthMedicine: 0,
         stagBeetleLarva: 0,
         butterflyEgg: 0,
+        beeEgg: 0,
         hasInsectHabitat: false,
         seeds: {},
         tools: {},
