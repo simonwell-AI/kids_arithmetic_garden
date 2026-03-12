@@ -21,6 +21,7 @@ const INSECT_ASSETS = "/insert-assets";
 const STAG_BEETLE_BASE = `${INSECT_ASSETS}/stag_beetle`;
 const BUTTERFLY_BASE = `${INSECT_ASSETS}/butterfly`;
 const BEE_BASE = `${INSECT_ASSETS}/bee`;
+const CICADA_BASE = `${INSECT_ASSETS}/cicada`;
 const HABITAT_EMPTY = `${INSECT_ASSETS}/habitat_empty.png`;
 const INSECT_FOOD_IMAGE = `${INSECT_ASSETS}/insect_food.png`;
 const MITE_SPRAY_IMAGE = `${INSECT_ASSETS}/mite_spray.png`;
@@ -57,7 +58,7 @@ export default function InsectPage() {
   const [animating, setAnimating] = useState<InsectAnimating>(null);
   const [showReleaseCelebration, setShowReleaseCelebration] = useState(false);
   const [showChangeInsectModal, setShowChangeInsectModal] = useState(false);
-  const [changeInsectSelected, setChangeInsectSelected] = useState<"stag_beetle" | "butterfly" | "bee" | null>(null);
+  const [changeInsectSelected, setChangeInsectSelected] = useState<"stag_beetle" | "butterfly" | "bee" | "cicada" | null>(null);
   const [now, setNow] = useState(() => Date.now());
   /** 蟲屋成就（用於成就徽章區塊） */
   const [achievements, setAchievements] = useState<AchievementState | null>(null);
@@ -120,12 +121,12 @@ export default function InsectPage() {
   };
 
   const handleStart = useCallback(
-    async (insectId: "stag_beetle" | "butterfly" | "bee") => {
+    async (insectId: "stag_beetle" | "butterfly" | "bee" | "cicada") => {
       const result = await startInsect(insectId);
       if (result.success) {
         await recordFirstInsectStart();
         await checkInsectTypes2Achievement();
-        showMessage(insectId === "butterfly" ? "開始飼養蝴蝶～" : insectId === "bee" ? "開始飼養蜜蜂～" : "開始飼養鍬形蟲～");
+        showMessage(insectId === "butterfly" ? "開始飼養蝴蝶～" : insectId === "bee" ? "開始飼養蜜蜂～" : insectId === "cicada" ? "開始飼養蟬～" : "開始飼養鍬形蟲～");
         load();
       } else {
         showMessage(result.message ?? "無法開始飼養");
@@ -146,7 +147,7 @@ export default function InsectPage() {
       if (startResult.success) {
         await recordFirstInsectStart();
         await checkInsectTypes2Achievement();
-        showMessage(changeInsectSelected === "butterfly" ? "已改養蝴蝶～" : changeInsectSelected === "bee" ? "已改養蜜蜂～" : "已改養鍬形蟲～");
+        showMessage(changeInsectSelected === "butterfly" ? "已改養蝴蝶～" : changeInsectSelected === "bee" ? "已改養蜜蜂～" : changeInsectSelected === "cicada" ? "已改養蟬～" : "已改養鍬形蟲～");
         setShowChangeInsectModal(false);
         setChangeInsectSelected(null);
         load();
@@ -289,11 +290,13 @@ export default function InsectPage() {
     if (!video || video.readyState < 2) return;
     const insectId = insect?.insectId ?? "stag_beetle";
     const insectPath =
-      insectId === "bee"
-        ? `${BEE_BASE}/bee_5.png`
-        : insectId === "butterfly"
-          ? `${BUTTERFLY_BASE}/butterfly_5.png`
-          : `${STAG_BEETLE_BASE}/stag_beetle_5.png`;
+      insectId === "cicada"
+        ? `${CICADA_BASE}/cicada_5.png`
+        : insectId === "bee"
+          ? `${BEE_BASE}/bee_5.png`
+          : insectId === "butterfly"
+            ? `${BUTTERFLY_BASE}/butterfly_5.png`
+            : `${STAG_BEETLE_BASE}/stag_beetle_5.png`;
     const insectUrl = typeof window !== "undefined" ? window.location.origin + insectPath : insectPath;
     const w = 600;
     const h = 800;
@@ -383,7 +386,8 @@ export default function InsectPage() {
   const hasStagBeetleLarva = (inventory?.stagBeetleLarva ?? 0) > 0;
   const hasButterflyEgg = (inventory?.butterflyEgg ?? 0) > 0;
   const hasBeeEgg = (inventory?.beeEgg ?? 0) > 0;
-  const hasAnyLarva = hasStagBeetleLarva || hasButterflyEgg || hasBeeEgg;
+  const hasCicadaEgg = (inventory?.cicadaEgg ?? 0) > 0;
+  const hasAnyLarva = hasStagBeetleLarva || hasButterflyEgg || hasBeeEgg || hasCicadaEgg;
   const canStart = hasHabitat && hasAnyLarva && !insect;
   const feedCount = inventory?.insectFood ?? 0;
   const miteSprayCount = inventory?.miteSpray ?? 0;
@@ -453,7 +457,7 @@ export default function InsectPage() {
             <Image src={HABITAT_EMPTY} alt="空飼養箱" width={200} height={160} className="rounded-lg object-contain" unoptimized />
             {!hasAnyLarva ? (
               <>
-                <p className="text-gray-700">飼養箱是空的～請到商店購買「鍬形蟲幼蟲」、「蝴蝶蟲卵」或「蜜蜂蟲卵」後再開始飼養。</p>
+                <p className="text-gray-700">飼養箱是空的～請到商店購買「鍬形蟲幼蟲」、「蝴蝶蟲卵」、「蜜蜂蟲卵」或「蟬蟲卵」後再開始飼養。</p>
                 <Link
                   href="/shop?from=insect"
                   className="min-h-[48px] rounded-xl bg-[var(--primary)] px-6 py-3 font-semibold text-white hover:bg-[var(--primary-hover)]"
@@ -495,6 +499,16 @@ export default function InsectPage() {
                       蜜蜂（× {inventory?.beeEgg ?? 0}）
                     </button>
                   )}
+                  {hasCicadaEgg && (
+                    <button
+                      type="button"
+                      onClick={() => handleStart("cicada")}
+                      className="flex flex-col items-center gap-2 rounded-xl border-2 border-emerald-400 bg-emerald-50/80 px-6 py-4 font-semibold text-emerald-900 hover:bg-emerald-100 active:scale-[0.98]"
+                    >
+                      <Image src={`${CICADA_BASE}/cicada_1.png`} alt="" width={56} height={48} className="object-contain" unoptimized />
+                      蟬（× {inventory?.cicadaEgg ?? 0}）
+                    </button>
+                  )}
                 </div>
               </>
             )}
@@ -515,8 +529,8 @@ export default function InsectPage() {
                 />
                 <div className="absolute inset-0 flex items-center justify-center p-4">
                   <Image
-                    src={insect.insectId === "bee" ? `${BEE_BASE}/bee_${insect.growthStage}.png` : insect.insectId === "butterfly" ? `${BUTTERFLY_BASE}/butterfly_${insect.growthStage}.png` : `${STAG_BEETLE_BASE}/stag_beetle_${insect.growthStage}.png`}
-                    alt={insect.insectId === "bee" ? `蜜蜂 階段 ${insect.growthStage}` : insect.insectId === "butterfly" ? `蝴蝶 階段 ${insect.growthStage}` : `鍬形蟲 階段 ${insect.growthStage}`}
+                    src={insect.insectId === "cicada" ? `${CICADA_BASE}/cicada_${insect.growthStage}.png` : insect.insectId === "bee" ? `${BEE_BASE}/bee_${insect.growthStage}.png` : insect.insectId === "butterfly" ? `${BUTTERFLY_BASE}/butterfly_${insect.growthStage}.png` : `${STAG_BEETLE_BASE}/stag_beetle_${insect.growthStage}.png`}
+                    alt={insect.insectId === "cicada" ? `蟬 階段 ${insect.growthStage}` : insect.insectId === "bee" ? `蜜蜂 階段 ${insect.growthStage}` : insect.insectId === "butterfly" ? `蝴蝶 階段 ${insect.growthStage}` : `鍬形蟲 階段 ${insect.growthStage}`}
                     width={140}
                     height={120}
                     className="insect-beetle-image insect-beetle-sway object-contain"
@@ -944,15 +958,26 @@ export default function InsectPage() {
                         <span className="text-xs text-amber-700">× {inventory?.beeEgg ?? 0}</span>
                       </button>
                     )}
+                    {hasCicadaEgg && (
+                      <button
+                        type="button"
+                        onClick={() => setChangeInsectSelected("cicada")}
+                        className="flex flex-col items-center gap-2 rounded-2xl border-2 border-emerald-400 bg-emerald-50/80 p-4 transition hover:border-emerald-500 hover:bg-emerald-100"
+                      >
+                        <Image src={`${CICADA_BASE}/cicada_1.png`} alt="" width={64} height={56} className="object-contain" unoptimized />
+                        <span className="font-semibold text-emerald-900">蟬</span>
+                        <span className="text-xs text-emerald-700">× {inventory?.cicadaEgg ?? 0}</span>
+                      </button>
+                    )}
                   </div>
-                  {!hasStagBeetleLarva && !hasButterflyEgg && !hasBeeEgg && (
-                    <p className="mt-3 text-center text-sm text-amber-700">沒有可換養的昆蟲，請到商店購買鍬形蟲幼蟲、蝴蝶蟲卵或蜜蜂蟲卵。</p>
+                  {!hasStagBeetleLarva && !hasButterflyEgg && !hasBeeEgg && !hasCicadaEgg && (
+                    <p className="mt-3 text-center text-sm text-amber-700">沒有可換養的昆蟲，請到商店購買鍬形蟲幼蟲、蝴蝶蟲卵、蜜蜂蟲卵或蟬蟲卵。</p>
                   )}
                 </>
               ) : (
                 <div className="space-y-4">
                   <p className="text-center text-sm text-gray-600">
-                    確定要改養{changeInsectSelected === "butterfly" ? "蝴蝶" : changeInsectSelected === "bee" ? "蜜蜂" : "鍬形蟲"}嗎？目前的蟲蟲將會消失喔。
+                    確定要改養{changeInsectSelected === "butterfly" ? "蝴蝶" : changeInsectSelected === "bee" ? "蜜蜂" : changeInsectSelected === "cicada" ? "蟬" : "鍬形蟲"}嗎？目前的蟲蟲將會消失喔。
                   </p>
                   <div className="flex gap-3">
                     <button
