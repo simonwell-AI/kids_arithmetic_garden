@@ -16,6 +16,7 @@ async function getInventory(): Promise<InventoryRecord> {
     butterflyEgg: 0,
     beeEgg: 0,
     cicadaEgg: 0,
+    stickInsectEgg: 0,
     hasInsectHabitat: false,
     advancedInsectGrowthMedicine: 0,
     seeds: { pink_flower: 1 },
@@ -38,6 +39,7 @@ function normalizeInv(record: InventoryRecord): InventoryRecord {
     butterflyEgg: record.butterflyEgg ?? 0,
     beeEgg: record.beeEgg ?? 0,
     cicadaEgg: record.cicadaEgg ?? 0,
+    stickInsectEgg: record.stickInsectEgg ?? 0,
     hasInsectHabitat: record.hasInsectHabitat ?? false,
     advancedInsectGrowthMedicine: record.advancedInsectGrowthMedicine ?? 0,
     tools: record.tools ?? {},
@@ -61,6 +63,7 @@ export async function getInventoryState(): Promise<InventoryRecord> {
     butterflyEgg: 0,
     beeEgg: 0,
     cicadaEgg: 0,
+    stickInsectEgg: 0,
     hasInsectHabitat: false,
     advancedInsectGrowthMedicine: 0,
     seeds: {},
@@ -84,7 +87,7 @@ export function totalItemCount(inv: InventoryRecord): number {
   const toolCount = sumCounts(invN.tools ?? {});
   const wateringCanCount = sumCounts(invN.wateringCans ?? {});
   const backpackCount = sumCounts(invN.backpacks ?? {});
-  return invN.water + invN.fertilizerBasic + invN.fertilizerPremium + (invN.insecticide ?? 0) + (invN.insectFood ?? 0) + (invN.miteSpray ?? 0) + (invN.stagBeetleLarva ?? 0) + (invN.butterflyEgg ?? 0) + (invN.beeEgg ?? 0) + (invN.cicadaEgg ?? 0) + (invN.advancedInsectGrowthMedicine ?? 0) + seedCount + toolCount + wateringCanCount + backpackCount;
+  return invN.water + invN.fertilizerBasic + invN.fertilizerPremium + (invN.insecticide ?? 0) + (invN.insectFood ?? 0) + (invN.miteSpray ?? 0) + (invN.stagBeetleLarva ?? 0) + (invN.butterflyEgg ?? 0) + (invN.beeEgg ?? 0) + (invN.cicadaEgg ?? 0) + (invN.stickInsectEgg ?? 0) + (invN.advancedInsectGrowthMedicine ?? 0) + seedCount + toolCount + wateringCanCount + backpackCount;
 }
 
 export async function addTool(toolId: string, count: number): Promise<void> {
@@ -291,6 +294,23 @@ export async function useCicadaEgg(): Promise<boolean> {
   return true;
 }
 
+export async function addStickInsectEgg(count: number): Promise<void> {
+  if (typeof window === "undefined") return;
+  const inv = await getInventory();
+  inv.stickInsectEgg = Math.max(0, (inv.stickInsectEgg ?? 0) + count);
+  await (await getDB()).put(STORE_INVENTORY, inv);
+}
+
+export async function useStickInsectEgg(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  const inv = await getInventory();
+  const n = inv.stickInsectEgg ?? 0;
+  if (n < 1) return false;
+  inv.stickInsectEgg = n - 1;
+  await (await getDB()).put(STORE_INVENTORY, inv);
+  return true;
+}
+
 export async function addAdvancedInsectGrowthMedicine(count: number): Promise<void> {
   if (typeof window === "undefined") return;
   const inv = await getInventory();
@@ -424,6 +444,13 @@ export async function removeCicadaEgg(count: number = 1): Promise<void> {
   if (typeof window === "undefined") return;
   const inv = normalizeInv(await getInventory());
   inv.cicadaEgg = Math.max(0, (inv.cicadaEgg ?? 0) - count);
+  await (await getDB()).put(STORE_INVENTORY, inv);
+}
+
+export async function removeStickInsectEgg(count: number = 1): Promise<void> {
+  if (typeof window === "undefined") return;
+  const inv = normalizeInv(await getInventory());
+  inv.stickInsectEgg = Math.max(0, (inv.stickInsectEgg ?? 0) - count);
   await (await getDB()).put(STORE_INVENTORY, inv);
 }
 

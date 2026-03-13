@@ -75,6 +75,8 @@ export interface InventoryRecord {
   beeEgg?: number;
   /** 蟬蟲卵數量（商店購買） */
   cicadaEgg?: number;
+  /** 竹節蟲蟲卵數量（商店購買） */
+  stickInsectEgg?: number;
   /** 是否擁有蟲屋飼養箱（買一次永久） */
   hasInsectHabitat?: boolean;
   /** 高級昆蟲成長藥（蟲屋使用，增加成長值） */

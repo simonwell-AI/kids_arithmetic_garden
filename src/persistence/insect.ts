@@ -1,5 +1,5 @@
 import { getDB, STORE_INSECT, INSECT_KEY, type InsectRecord } from "./db";
-import { useInsectFood, useMiteSpray, useStagBeetleLarva, useButterflyEgg, useBeeEgg, useCicadaEgg, getInventoryState, hasTool, useTool, useAdvancedInsectGrowthMedicine } from "./inventory";
+import { useInsectFood, useMiteSpray, useStagBeetleLarva, useButterflyEgg, useBeeEgg, useCicadaEgg, useStickInsectEgg, getInventoryState, hasTool, useTool, useAdvancedInsectGrowthMedicine } from "./inventory";
 import { addCoins } from "./wallet";
 
 const INSECT_MAX_STAGE = 5;
@@ -174,6 +174,10 @@ export async function startInsect(insectId: string): Promise<{ success: boolean;
     if ((inv.cicadaEgg ?? 0) < 1) return { success: false, message: "需要蟬蟲卵，請到商店購買" };
     const used = await useCicadaEgg();
     if (!used) return { success: false, message: "蟬蟲卵不足" };
+  } else if (insectId === "stick_insect") {
+    if ((inv.stickInsectEgg ?? 0) < 1) return { success: false, message: "需要竹節蟲蟲卵，請到商店購買" };
+    const used = await useStickInsectEgg();
+    if (!used) return { success: false, message: "竹節蟲蟲卵不足" };
   } else {
     return { success: false, message: "不支援此昆蟲類型" };
   }
