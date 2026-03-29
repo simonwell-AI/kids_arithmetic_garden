@@ -4,6 +4,7 @@
  */
 export const SEED_MAX_FRAME: Record<string, number> = {
   tomato: 4,
+  cactus: 6,
 };
 
 /** 花園／商店圖片路徑：種子成長階段 0..4 對應 _1.._N（N = SEED_MAX_FRAME[seedId] ?? 5） */
@@ -28,4 +29,6 @@ export const SEED_NAMES: Record<string, string> = {
   daffodils: "水仙花",
   peach: "水蜜桃",
   grape: "葡萄",
+  orchid: "蘭花",
+  cactus: "仙人掌",
 };
