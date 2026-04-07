@@ -18,7 +18,10 @@ import {
   addBeeEgg,
   addCicadaEgg,
   addStickInsectEgg,
+  addGoldfishEgg,
+  addFishFood,
   setHasInsectHabitat,
+  setHasFishTank,
   addAdvancedInsectGrowthMedicine,
 } from "@/src/persistence/inventory";
 import type { ShopItem } from "./catalog";
@@ -29,11 +32,14 @@ export async function purchaseItem(item: ShopItem): Promise<{ success: boolean; 
   const inv = await getInventoryState();
   const used = totalItemCount(inv);
   const capacity = inv.capacity ?? 5;
-  if (item.type !== "backpack_expand" && item.type !== "insect_habitat" && used >= capacity) {
+  if (item.type !== "backpack_expand" && item.type !== "insect_habitat" && item.type !== "fish_tank" && used >= capacity) {
     return { success: false, message: "背包已滿，請先擴充背包" };
   }
   if (item.type === "insect_habitat" && inv.hasInsectHabitat) {
     return { success: false, message: "已經擁有飼養箱" };
+  }
+  if (item.type === "fish_tank" && inv.hasFishTank) {
+    return { success: false, message: "已經擁有魚缸" };
   }
   await addCoins(-item.price);
   switch (item.type) {
@@ -67,6 +73,15 @@ export async function purchaseItem(item: ShopItem): Promise<{ success: boolean; 
     case "stick_insect_egg":
       await addStickInsectEgg(1);
       return { success: true };
+    case "goldfish_egg":
+      await addGoldfishEgg(1);
+      return { success: true };
+    case "fish_food":
+      await addFishFood(1);
+      return { success: true };
+    case "fish_tank":
+      await setHasFishTank(true);
+      return { success: true };
     case "insect_habitat":
       await setHasInsectHabitat(true);
       return { success: true };
@@ -77,11 +92,12 @@ export async function purchaseItem(item: ShopItem): Promise<{ success: boolean; 
       await addAdvancedInsectGrowthMedicine(1);
       return { success: true };
     case "insect_tool":
+    case "fish_tool":
       if (item.toolId) {
         await addTool(item.toolId, 1);
         return { success: true };
       }
-      return { success: false, message: "無此蟲屋工具" };
+      return { success: false, message: "無此工具" };
     case "seed":
       if (item.seedId) {
         await addSeed(item.seedId, 1);
@@ -127,7 +143,10 @@ export async function getInventoryCounts(): Promise<{
   beeEgg: number;
   cicadaEgg: number;
   stickInsectEgg: number;
+  goldfishEgg: number;
+  fishFood: number;
   hasInsectHabitat: boolean;
+  hasFishTank: boolean;
   seeds: Record<string, number>;
   tools: Record<string, number>;
   wateringCans: Record<string, number>;
@@ -152,7 +171,10 @@ export async function getInventoryCounts(): Promise<{
     beeEgg: inv.beeEgg ?? 0,
     cicadaEgg: inv.cicadaEgg ?? 0,
     stickInsectEgg: inv.stickInsectEgg ?? 0,
+    goldfishEgg: inv.goldfishEgg ?? 0,
+    fishFood: inv.fishFood ?? 0,
     hasInsectHabitat: inv.hasInsectHabitat ?? false,
+    hasFishTank: inv.hasFishTank ?? false,
     seeds: inv.seeds ?? {},
     tools: inv.tools ?? {},
     wateringCans: inv.wateringCans ?? {},
@@ -172,6 +194,11 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
   potting_soil: "盆栽土",
   insect_shovel: "昆蟲小鏟",
   insect_clips: "昆蟲夾子",
+  fish_net: "小魚網",
+  air_pump: "打氣機",
+  filter: "過濾器",
+  thermometer: "水溫計",
+  bucket: "換水桶",
 };
 
 export const WATERING_CAN_DISPLAY_NAMES: Record<string, string> = {

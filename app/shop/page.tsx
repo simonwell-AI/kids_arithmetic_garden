@@ -22,6 +22,8 @@ import {
   removeBeeEgg,
   removeCicadaEgg,
   removeStickInsectEgg,
+  removeGoldfishEgg,
+  removeFishFood,
   removeSeed,
   removeTool,
   removeWateringCan,
@@ -51,6 +53,10 @@ function getShopItemIcon(item: ShopItem): string {
   if (item.type === "bee_egg") return "/insert-assets/bee/bee_1.png";
   if (item.type === "cicada_egg") return "/insert-assets/cicada/cicada_1.png";
   if (item.type === "stick_insect_egg") return "/insert-assets/stick _insect/stick _insect_1.png";
+  if (item.type === "goldfish_egg") return "/fish_tank-assets/goldfish/goldfish_1.png";
+  if (item.type === "fish_tank") return "/fish_tank-assets/fish_tank.png";
+  if (item.type === "fish_food") return "/fish_tank-assets/fish_food.png";
+  if (item.type === "fish_tool" && item.toolImagePath) return item.toolImagePath;
   if (item.type === "insect_habitat") return "/insert-assets/habitat_empty.png";
   if (item.type === "mite_spray") return "/insert-assets/mite_spray.png";
   if (item.type === "insect_growth_medicine") return "/insert-assets/advanced_insect_growth_medicine.png";
@@ -110,7 +116,10 @@ function ShopPageContent() {
         beeEgg: 0,
         cicadaEgg: 0,
         stickInsectEgg: 0,
+        goldfishEgg: 0,
+        fishFood: 0,
         hasInsectHabitat: false,
+        hasFishTank: false,
         seeds: {},
         tools: {},
         wateringCans: {},
@@ -465,6 +474,34 @@ function ShopPageContent() {
                         竹節蟲蟲卵 × {inventory.stickInsectEgg} 丟掉 1
                       </button>
                     )}
+                    {(inventory.goldfishEgg ?? 0) > 0 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDiscardConfirm({
+                            label: "金魚卵",
+                            execute: () => removeGoldfishEgg(1),
+                          })
+                        }
+                        className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                      >
+                        金魚卵 × {inventory.goldfishEgg} 丟掉 1
+                      </button>
+                    )}
+                    {(inventory.fishFood ?? 0) > 0 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDiscardConfirm({
+                            label: "魚飼料罐",
+                            execute: () => removeFishFood(1),
+                          })
+                        }
+                        className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                      >
+                        魚飼料罐 × {inventory.fishFood} 丟掉 1
+                      </button>
+                    )}
                     {Object.entries(inventory.seeds)
                       .filter(([, n]) => n > 0)
                       .map(([id, n]) => {
@@ -585,15 +622,18 @@ function ShopPageContent() {
           {getItemsByCategory(shopCatalog).map(({ key, label, items }) => (
             <section
               key={key}
-              className={`flex flex-col gap-3 ${key === "insect" ? "rounded-2xl border-2 border-amber-300 bg-amber-50/60 px-4 py-4 sm:px-5 sm:py-5" : ""}`}
+              className={`flex flex-col gap-3 ${key === "insect" ? "rounded-2xl border-2 border-amber-300 bg-amber-50/60 px-4 py-4 sm:px-5 sm:py-5" : key === "fish" ? "rounded-2xl border-2 border-sky-300 bg-sky-50/60 px-4 py-4 sm:px-5 sm:py-5" : ""}`}
             >
               <h2
-                className={`pb-1.5 text-lg font-bold ${key === "insect" ? "border-b-2 border-amber-400 text-amber-900" : "border-b-2 border-[var(--primary)] text-[var(--foreground)]"}`}
+                className={`pb-1.5 text-lg font-bold ${key === "insect" ? "border-b-2 border-amber-400 text-amber-900" : key === "fish" ? "border-b-2 border-sky-400 text-sky-900" : "border-b-2 border-[var(--primary)] text-[var(--foreground)]"}`}
               >
                 {label}
               </h2>
               {key === "insect" && (
                 <p className="text-sm text-amber-800/90">蟲屋專用，與花園物品分開。</p>
+              )}
+              {key === "fish" && (
+                <p className="text-sm text-sky-800/90">魚缸專用，與花園/蟲屋物品分開。</p>
               )}
               {key === "tool" && (
                 <p className="text-sm text-gray-600">
@@ -632,12 +672,17 @@ function ShopPageContent() {
                       disabled={
                         coins != null &&
                         (coins < item.price ||
-                          (item.type !== "backpack_expand" && item.type !== "insect_habitat" && backpackFull) ||
-                          (item.type === "insect_habitat" && (inventory?.hasInsectHabitat ?? false)))
+                          (item.type !== "backpack_expand" && item.type !== "insect_habitat" && item.type !== "fish_tank" && backpackFull) ||
+                          (item.type === "insect_habitat" && (inventory?.hasInsectHabitat ?? false)) ||
+                          (item.type === "fish_tank" && (inventory?.hasFishTank ?? false)))
                       }
                       className="mt-auto min-h-[44px] rounded-xl bg-[var(--primary)] px-4 font-semibold text-white transition-transform active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 hover:bg-[var(--primary-hover)]"
                     >
-                      {item.type === "insect_habitat" && (inventory?.hasInsectHabitat ?? false) ? "已擁有" : "購買"}
+                      {item.type === "insect_habitat" && (inventory?.hasInsectHabitat ?? false)
+                        ? "已擁有"
+                        : item.type === "fish_tank" && (inventory?.hasFishTank ?? false)
+                          ? "已擁有"
+                          : "購買"}
                     </button>
                   </li>
                 ))}

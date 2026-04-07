@@ -1,7 +1,7 @@
 import { openDB } from "idb";
 
 const DB_NAME = "kid-arithmetic-db";
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 
 export const STORE_SESSIONS = "sessions";
 export const STORE_ATTEMPTS = "attempts";
@@ -11,12 +11,14 @@ export const STORE_WALLET = "wallet";
 export const STORE_INVENTORY = "inventory";
 export const STORE_GARDEN = "garden";
 export const STORE_INSECT = "insect_home";
+export const STORE_FISH = "fish_tank";
 export const STORE_ACHIEVEMENTS = "achievements";
 
 export const WALLET_KEY = "default";
 export const INVENTORY_KEY = "default";
 export const GARDEN_KEY = "default";
 export const INSECT_KEY = "default";
+export const FISH_KEY = "default";
 export const ACHIEVEMENTS_KEY = "default";
 
 export interface SessionRecord {
@@ -81,6 +83,12 @@ export interface InventoryRecord {
   hasInsectHabitat?: boolean;
   /** 高級昆蟲成長藥（蟲屋使用，增加成長值） */
   advancedInsectGrowthMedicine?: number;
+  /** 金魚卵數量（商店購買） */
+  goldfishEgg?: number;
+  /** 魚飼料罐數量（魚池餵食用） */
+  fishFood?: number;
+  /** 是否擁有魚缸（買一次永久） */
+  hasFishTank?: boolean;
   seeds: Record<string, number>;
   tools?: Record<string, number>;
   wateringCans?: Record<string, number>;
@@ -131,6 +139,16 @@ export interface InsectRecord {
   lastShovelUsedAt?: number;
   /** 上次用夾子夾出糞便清潔時間；過久未清潔會生病、生長變慢 */
   lastClipsUsedAt?: number;
+}
+
+export interface FishRecord {
+  id: string;
+  fishId: string;
+  /** 累積成長值，stage = min(5, floor(growthValue)+1) */
+  growthValue: number;
+  startedAt: number;
+  lastFedAt?: number;
+  feedCount?: number;
 }
 
 export interface AchievementRecord {
@@ -204,6 +222,32 @@ export interface AchievementRecord {
   /** 蟲屋：養過 2 種昆蟲（鍬形蟲+蝴蝶） */
   insectTypes2Unlocked?: boolean;
   insectTypes2UnlockedAt?: number;
+  /** 魚缸：第一次開始養魚 */
+  fishFirstStartUnlocked?: boolean;
+  fishFirstStartUnlockedAt?: number;
+  /** 魚缸：連續 7 天進魚缸 */
+  fishStreak7Unlocked?: boolean;
+  fishStreak7UnlockedAt?: number;
+  lastFishVisitDate?: string;
+  fishConsecutiveDays?: number;
+  /** 魚缸：餵魚次數累計 */
+  fishFeedCount?: number;
+  /** 魚缸：餵魚 10 次 */
+  fishFeed10Unlocked?: boolean;
+  fishFeed10UnlockedAt?: number;
+  /** 魚缸：放回魚池次數累計 */
+  fishReleaseCount?: number;
+  /** 魚缸：第一次放回魚池 */
+  fishRelease1Unlocked?: boolean;
+  fishRelease1UnlockedAt?: number;
+  /** 魚缸：放回魚池 3 次 */
+  fishRelease3Unlocked?: boolean;
+  fishRelease3UnlockedAt?: number;
+  /** 魚缸：工具使用次數累計 */
+  fishToolUseCount?: number;
+  /** 魚缸：工具使用 10 次 */
+  fishToolUse10Unlocked?: boolean;
+  fishToolUse10UnlockedAt?: number;
 }
 
 let dbPromise: ReturnType<typeof openDB> | null = null;
@@ -245,6 +289,11 @@ export function getDB() {
         if (oldVersion < 5) {
           if (!db.objectStoreNames.contains(STORE_INSECT)) {
             db.createObjectStore(STORE_INSECT, { keyPath: "id" });
+          }
+        }
+        if (oldVersion < 6) {
+          if (!db.objectStoreNames.contains(STORE_FISH)) {
+            db.createObjectStore(STORE_FISH, { keyPath: "id" });
           }
         }
       },

@@ -2,6 +2,7 @@ const GARGEN_TOOLS_BASE = "/garden-assets/gargen_tools";
 const WATERING_CAN_BASE = "/garden-assets/watering_can";
 const BACKPACK_BASE = "/garden-assets/Backpack";
 const INSECT_ASSETS_BASE = "/insert-assets";
+const FISH_ASSETS_BASE = "/fish_tank-assets";
 
 export const DEFAULT_BACKPACK_IMAGE = `${BACKPACK_BASE}/green_backpack.png`;
 
@@ -17,6 +18,10 @@ export type ShopItemType =
   | "bee_egg"
   | "cicada_egg"
   | "stick_insect_egg"
+  | "goldfish_egg"
+  | "fish_tank"
+  | "fish_food"
+  | "fish_tool"
   | "insect_habitat"
   | "mite_spray"
   | "insect_growth_medicine"
@@ -67,6 +72,14 @@ export const SHOP_CATALOG: ShopItem[] = [
   { id: "bee_egg", type: "bee_egg", name: "蜜蜂蟲卵", price: 38 },
   { id: "cicada_egg", type: "cicada_egg", name: "蟬蟲卵", price: 35 },
   { id: "stick_insect_egg", type: "stick_insect_egg", name: "竹節蟲蟲卵", price: 50 },
+  { id: "goldfish_egg", type: "goldfish_egg", name: "金魚卵", price: 90 },
+  { id: "fish_tank", type: "fish_tank", name: "魚缸", price: 110 },
+  { id: "fish_food", type: "fish_food", name: "魚飼料罐", price: 24 },
+  { id: "fish_tool_net", type: "fish_tool", name: "小魚網", price: 20, toolId: "fish_net", toolImagePath: `${FISH_ASSETS_BASE}/fish_net.png` },
+  { id: "fish_tool_air_pump", type: "fish_tool", name: "打氣機", price: 24, toolId: "air_pump", toolImagePath: `${FISH_ASSETS_BASE}/air_pump.png` },
+  { id: "fish_tool_filter", type: "fish_tool", name: "過濾器", price: 28, toolId: "filter", toolImagePath: `${FISH_ASSETS_BASE}/water_filter.png` },
+  { id: "fish_tool_thermometer", type: "fish_tool", name: "水溫計", price: 16, toolId: "thermometer", toolImagePath: `${FISH_ASSETS_BASE}/thermometer.png` },
+  { id: "fish_tool_bucket", type: "fish_tool", name: "換水桶", price: 20, toolId: "bucket", toolImagePath: `${FISH_ASSETS_BASE}/bucket.png` },
   { id: "insect_habitat", type: "insect_habitat", name: "鍬形蟲飼養箱", price: 45 },
   { id: "mite_spray", type: "mite_spray", name: "除蟎劑", price: 6 },
   { id: "insect_growth_medicine", type: "insect_growth_medicine", name: "高級昆蟲成長藥", price: 150 },
@@ -92,6 +105,7 @@ export const SHOP_CATEGORIES: { key: string; label: string; types: ShopItemType[
   { key: "seed", label: "種子", types: ["seed"] },
   { key: "consumable", label: "消耗品", types: ["water", "fertilizer_basic", "fertilizer_premium", "insecticide"] },
   { key: "insect", label: "蟲屋", types: ["insect_food", "insect_larva", "butterfly_egg", "bee_egg", "cicada_egg", "stick_insect_egg", "insect_habitat", "mite_spray", "insect_growth_medicine", "insect_tool"] },
+  { key: "fish", label: "魚缸", types: ["goldfish_egg", "fish_tank", "fish_food", "fish_tool"] },
   { key: "tool", label: "園藝工具", types: ["tool"] },
   { key: "watering_can", label: "水壺外觀", types: ["watering_can"] },
   { key: "backpack", label: "背包", types: ["backpack_expand", "backpack"] },

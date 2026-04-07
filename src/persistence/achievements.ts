@@ -90,6 +90,17 @@ export interface AchievementState {
   insectRelease3Unlocked: boolean;
   insectTypesRaisedCount: number;
   insectTypes2Unlocked: boolean;
+  /** 魚缸成就 */
+  fishFirstStartUnlocked: boolean;
+  fishStreak7Unlocked: boolean;
+  fishConsecutiveDays: number;
+  fishFeedCount: number;
+  fishFeed10Unlocked: boolean;
+  fishReleaseCount: number;
+  fishRelease1Unlocked: boolean;
+  fishRelease3Unlocked: boolean;
+  fishToolUseCount: number;
+  fishToolUse10Unlocked: boolean;
 }
 
 export async function getAchievements(): Promise<AchievementState> {
@@ -123,6 +134,16 @@ export async function getAchievements(): Promise<AchievementState> {
       insectRelease3Unlocked: false,
       insectTypesRaisedCount: 0,
       insectTypes2Unlocked: false,
+      fishFirstStartUnlocked: false,
+      fishStreak7Unlocked: false,
+      fishConsecutiveDays: 0,
+      fishFeedCount: 0,
+      fishFeed10Unlocked: false,
+      fishReleaseCount: 0,
+      fishRelease1Unlocked: false,
+      fishRelease3Unlocked: false,
+      fishToolUseCount: 0,
+      fishToolUse10Unlocked: false,
     };
   }
   const r = await getAchievementRecord();
@@ -158,6 +179,16 @@ export async function getAchievements(): Promise<AchievementState> {
     insectRelease3Unlocked: r.insectRelease3Unlocked ?? false,
     insectTypesRaisedCount: raisedIds.length,
     insectTypes2Unlocked: r.insectTypes2Unlocked ?? false,
+    fishFirstStartUnlocked: r.fishFirstStartUnlocked ?? false,
+    fishStreak7Unlocked: r.fishStreak7Unlocked ?? false,
+    fishConsecutiveDays: r.fishConsecutiveDays ?? 0,
+    fishFeedCount: r.fishFeedCount ?? 0,
+    fishFeed10Unlocked: r.fishFeed10Unlocked ?? false,
+    fishReleaseCount: r.fishReleaseCount ?? 0,
+    fishRelease1Unlocked: r.fishRelease1Unlocked ?? false,
+    fishRelease3Unlocked: r.fishRelease3Unlocked ?? false,
+    fishToolUseCount: r.fishToolUseCount ?? 0,
+    fishToolUse10Unlocked: r.fishToolUse10Unlocked ?? false,
   };
 }
 
@@ -485,4 +516,120 @@ export async function checkInsectTypes2Achievement(): Promise<{ justUnlocked: bo
   await saveAchievements(r);
   await addCoins(PLANTED_6_COINS);
   return { justUnlocked: true, coinsAwarded: PLANTED_6_COINS };
+}
+
+/** 魚缸：記錄今日進魚缸，更新連續天數；達 7 天解鎖並發代幣 */
+export async function recordFishVisit(): Promise<{
+  consecutiveDays: number;
+  justUnlocked: boolean;
+  coinsAwarded: number;
+}> {
+  if (typeof window === "undefined") return { consecutiveDays: 0, justUnlocked: false, coinsAwarded: 0 };
+  const r = await getAchievementRecord();
+  const today = todayDateString();
+  if (r.lastFishVisitDate === today) {
+    return {
+      consecutiveDays: r.fishConsecutiveDays ?? 0,
+      justUnlocked: false,
+      coinsAwarded: 0,
+    };
+  }
+  const last = r.lastFishVisitDate ?? "";
+  const daysDiff = last ? daysBetween(last, today) : 1;
+  r.fishConsecutiveDays = (r.fishConsecutiveDays ?? 0) + (daysDiff === 1 ? 1 : 0);
+  if (daysDiff !== 1) r.fishConsecutiveDays = 1;
+  r.lastFishVisitDate = today;
+  let justUnlocked = false;
+  let coinsAwarded = 0;
+  if ((r.fishConsecutiveDays ?? 0) >= 7 && !(r.fishStreak7Unlocked ?? false)) {
+    r.fishStreak7Unlocked = true;
+    r.fishStreak7UnlockedAt = Date.now();
+    await addCoins(UNLOCK_COINS);
+    justUnlocked = true;
+    coinsAwarded = UNLOCK_COINS;
+  }
+  await saveAchievements(r);
+  return { consecutiveDays: r.fishConsecutiveDays ?? 0, justUnlocked, coinsAwarded };
+}
+
+/** 魚缸：第一次開始養魚時呼叫；解鎖並發代幣 */
+export async function recordFirstFishStart(): Promise<{ justUnlocked: boolean; coinsAwarded: number }> {
+  if (typeof window === "undefined") return { justUnlocked: false, coinsAwarded: 0 };
+  const r = await getAchievementRecord();
+  if (r.fishFirstStartUnlocked) return { justUnlocked: false, coinsAwarded: 0 };
+  r.fishFirstStartUnlocked = true;
+  r.fishFirstStartUnlockedAt = Date.now();
+  await saveAchievements(r);
+  await addCoins(UNLOCK_COINS);
+  return { justUnlocked: true, coinsAwarded: UNLOCK_COINS };
+}
+
+/** 魚缸：餵魚成功時呼叫；達 10 次解鎖並發代幣 */
+export async function incrementFishFeedCount(): Promise<{ justUnlocked: boolean; coinsAwarded: number }> {
+  if (typeof window === "undefined") return { justUnlocked: false, coinsAwarded: 0 };
+  const r = await getAchievementRecord();
+  r.fishFeedCount = (r.fishFeedCount ?? 0) + 1;
+  let justUnlocked = false;
+  let coinsAwarded = 0;
+  if ((r.fishFeedCount ?? 0) >= 10 && !(r.fishFeed10Unlocked ?? false)) {
+    r.fishFeed10Unlocked = true;
+    r.fishFeed10UnlockedAt = Date.now();
+    await addCoins(UNLOCK_COINS);
+    justUnlocked = true;
+    coinsAwarded = UNLOCK_COINS;
+  }
+  await saveAchievements(r);
+  return { justUnlocked, coinsAwarded };
+}
+
+/** 魚缸：放回魚池成功時呼叫；第 1 次與達 3 次解鎖並發代幣 */
+export async function incrementFishReleaseCount(): Promise<{
+  release1JustUnlocked?: boolean;
+  release3JustUnlocked?: boolean;
+  coinsAwarded: number;
+}> {
+  if (typeof window === "undefined") return { coinsAwarded: 0 };
+  const r = await getAchievementRecord();
+  r.fishReleaseCount = (r.fishReleaseCount ?? 0) + 1;
+  let coinsAwarded = 0;
+  let release1JustUnlocked = false;
+  let release3JustUnlocked = false;
+  if (!(r.fishRelease1Unlocked ?? false)) {
+    r.fishRelease1Unlocked = true;
+    r.fishRelease1UnlockedAt = Date.now();
+    await addCoins(UNLOCK_COINS);
+    coinsAwarded += UNLOCK_COINS;
+    release1JustUnlocked = true;
+  }
+  if ((r.fishReleaseCount ?? 0) >= 3 && !(r.fishRelease3Unlocked ?? false)) {
+    r.fishRelease3Unlocked = true;
+    r.fishRelease3UnlockedAt = Date.now();
+    await addCoins(UNLOCK_COINS);
+    coinsAwarded += UNLOCK_COINS;
+    release3JustUnlocked = true;
+  }
+  await saveAchievements(r);
+  return {
+    ...(release1JustUnlocked && { release1JustUnlocked: true }),
+    ...(release3JustUnlocked && { release3JustUnlocked: true }),
+    coinsAwarded,
+  };
+}
+
+/** 魚缸：使用工具時呼叫；達 10 次解鎖並發代幣 */
+export async function incrementFishToolUseCount(): Promise<{ justUnlocked: boolean; coinsAwarded: number }> {
+  if (typeof window === "undefined") return { justUnlocked: false, coinsAwarded: 0 };
+  const r = await getAchievementRecord();
+  r.fishToolUseCount = (r.fishToolUseCount ?? 0) + 1;
+  let justUnlocked = false;
+  let coinsAwarded = 0;
+  if ((r.fishToolUseCount ?? 0) >= 10 && !(r.fishToolUse10Unlocked ?? false)) {
+    r.fishToolUse10Unlocked = true;
+    r.fishToolUse10UnlockedAt = Date.now();
+    await addCoins(UNLOCK_COINS);
+    justUnlocked = true;
+    coinsAwarded = UNLOCK_COINS;
+  }
+  await saveAchievements(r);
+  return { justUnlocked, coinsAwarded };
 }
