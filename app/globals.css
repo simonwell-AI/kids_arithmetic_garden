@@ -1192,6 +1192,24 @@ body {
   100% { transform: translateY(70px) scale(1.1); opacity: 0; }
 }
 
+@keyframes fish-swim-idle {
+  0% {
+    transform: translateX(-6px) translateY(0) rotate(-1deg);
+  }
+  25% {
+    transform: translateX(4px) translateY(-3px) rotate(1.5deg);
+  }
+  50% {
+    transform: translateX(8px) translateY(0) rotate(0deg);
+  }
+  75% {
+    transform: translateX(-2px) translateY(3px) rotate(-1.2deg);
+  }
+  100% {
+    transform: translateX(-6px) translateY(0) rotate(-1deg);
+  }
+}
+
 .fish-tool-swing {
   animation: fish-tool-swing 1.4s ease-in-out forwards;
 }
@@ -1219,4 +1237,10 @@ body {
 
 .fish-bucket-drop {
   animation: fish-bucket-drop 1s ease-out forwards;
+}
+
+.fish-swim-idle {
+  transform-origin: center center;
+  animation: fish-swim-idle var(--fish-swim-duration, 4.2s) ease-in-out infinite;
+  will-change: transform;
 }

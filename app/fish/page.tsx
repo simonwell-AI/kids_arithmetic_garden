@@ -170,6 +170,16 @@ export default function FishPage() {
   const bucketCount = inventory?.tools?.bucket ?? 0;
   const canStart = hasFishTank && !fish && goldfishEggCount > 0;
   const isAdult = fish != null && fish.growthStage >= 5;
+  const fishSwimDurationSec =
+    fish == null
+      ? 4.2
+      : fish.growthStage <= 2
+        ? 3.1
+        : fish.growthStage === 3
+          ? 3.8
+          : fish.growthStage === 4
+            ? 4.6
+            : 5.4;
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-[var(--background)]">
@@ -235,22 +245,30 @@ export default function FishPage() {
               <div className="relative aspect-[4/3] min-h-[240px]">
                 <Image src={FISH_TANK_IMAGE} alt="魚缸" fill className="object-cover" unoptimized />
                 <div className="absolute inset-0 flex items-center justify-center p-4">
-                  <Image src={`${GOLDFISH_BASE}/goldfish_${fish.growthStage}.png`} alt={`金魚 階段 ${fish.growthStage}`} width={150} height={120} className="object-contain" unoptimized />
+                  <Image
+                    src={`${GOLDFISH_BASE}/goldfish_${fish.growthStage}.png`}
+                    alt={`金魚 階段 ${fish.growthStage}`}
+                    width={150}
+                    height={120}
+                    className="fish-swim-idle object-contain"
+                    style={{ ["--fish-swim-duration" as string]: `${fishSwimDurationSec}s` }}
+                    unoptimized
+                  />
                 </div>
                 {animating === "feed" && (
                   <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
-                    <Image src={FISH_FOOD_IMAGE} alt="" width={64} height={64} className="fish-tool-swing object-contain" unoptimized />
+                    <Image src={FISH_FOOD_IMAGE} alt="" width={128} height={128} className="fish-tool-swing object-contain" unoptimized />
                     <span className="fish-sparkle absolute left-1/2 top-1/3 h-4 w-4 rounded-full bg-amber-300/80" aria-hidden />
                   </div>
                 )}
                 {animating === "net" && (
                   <div className="pointer-events-none absolute inset-0 z-20">
-                    <Image src={FISH_NET_IMAGE} alt="" width={92} height={92} className="fish-net-sweep absolute left-1/2 top-1/2 object-contain" unoptimized />
+                    <Image src={FISH_NET_IMAGE} alt="" width={184} height={184} className="fish-net-sweep absolute left-1/2 top-1/2 object-contain" unoptimized />
                   </div>
                 )}
                 {animating === "pump" && (
                   <div className="pointer-events-none absolute inset-0 z-20">
-                    <Image src={FISH_AIR_PUMP_IMAGE} alt="" width={72} height={72} className="fish-tool-swing absolute right-4 top-4 object-contain" unoptimized />
+                    <Image src={FISH_AIR_PUMP_IMAGE} alt="" width={144} height={144} className="fish-tool-swing absolute right-4 top-4 object-contain" unoptimized />
                     <span className="fish-bubble-dot absolute left-[45%] top-[60%] h-3 w-3 rounded-full bg-sky-200/80" />
                     <span className="fish-bubble-dot absolute left-[52%] top-[66%] h-2 w-2 rounded-full bg-sky-100/90" style={{ animationDelay: "0.2s" }} />
                     <span className="fish-bubble-dot absolute left-[58%] top-[70%] h-3 w-3 rounded-full bg-sky-200/70" style={{ animationDelay: "0.35s" }} />
@@ -258,19 +276,19 @@ export default function FishPage() {
                 )}
                 {animating === "filter" && (
                   <div className="pointer-events-none absolute inset-0 z-20">
-                    <Image src={FISH_FILTER_IMAGE} alt="" width={80} height={80} className="fish-tool-swing absolute left-3 top-3 object-contain opacity-90" unoptimized />
+                    <Image src={FISH_FILTER_IMAGE} alt="" width={160} height={160} className="fish-tool-swing absolute left-3 top-3 object-contain opacity-90" unoptimized />
                     <span className="fish-ripple absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-sky-300/70" />
                     <span className="fish-ripple absolute left-1/2 top-1/2 h-32 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full border border-sky-200/60" style={{ animationDelay: "0.2s" }} />
                   </div>
                 )}
                 {animating === "thermometer" && (
                   <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
-                    <Image src={FISH_THERMOMETER_IMAGE} alt="" width={72} height={72} className="fish-thermo-pulse object-contain" unoptimized />
+                    <Image src={FISH_THERMOMETER_IMAGE} alt="" width={144} height={144} className="fish-thermo-pulse object-contain" unoptimized />
                   </div>
                 )}
                 {animating === "bucket" && (
                   <div className="pointer-events-none absolute inset-0 z-20">
-                    <Image src={FISH_BUCKET_IMAGE} alt="" width={78} height={78} className="fish-tool-swing absolute right-5 top-6 object-contain" unoptimized />
+                    <Image src={FISH_BUCKET_IMAGE} alt="" width={156} height={156} className="fish-tool-swing absolute right-5 top-6 object-contain" unoptimized />
                     <span className="fish-bucket-drop absolute right-[30%] top-[35%] h-2.5 w-2.5 rounded-full bg-sky-300/80" />
                     <span className="fish-bucket-drop absolute right-[34%] top-[38%] h-2 w-2 rounded-full bg-sky-200/80" style={{ animationDelay: "0.15s" }} />
                   </div>

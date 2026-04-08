@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { getCoins, getPlantedSeedIds } from "@/src/persistence";
+import { addCoins, getCoins, getPlantedSeedIds } from "@/src/persistence";
 import { getRaisedInsectIds } from "@/src/persistence/insect";
 import { SHOP_CATALOG, SHOP_CATEGORIES, DEFAULT_BACKPACK_IMAGE } from "@/src/shop/catalog";
 import { purchaseItem, getInventoryCounts, TOOL_DISPLAY_NAMES, WATERING_CAN_DISPLAY_NAMES, BACKPACK_DISPLAY_NAMES } from "@/src/shop/purchase";
@@ -208,6 +208,19 @@ function ShopPageContent() {
               {coins ?? 0}
             </span>
             </span>
+            <button
+              type="button"
+              onClick={async () => {
+                await addCoins(100);
+                setMessage("測試加金幣 +100");
+                setMessageType("success");
+                load();
+                setTimeout(() => setMessage(null), 1800);
+              }}
+              className="min-h-[40px] rounded-xl border-2 border-amber-300 bg-amber-100 px-3 text-sm font-semibold text-amber-900 hover:bg-amber-200"
+            >
+              測試加金幣 +100
+            </button>
           </div>
         </div>
         <h1 className="text-center text-2xl font-bold text-[var(--foreground)] sm:text-3xl">
@@ -651,7 +664,11 @@ function ShopPageContent() {
                     }`}
                   >
                     <div className="mb-2 flex items-center gap-3">
-                      <div className="shop-product-image-wrap relative h-12 w-12 shrink-0 overflow-hidden rounded-lg transition-transform duration-200">
+                      <div
+                        className={`shop-product-image-wrap relative shrink-0 overflow-hidden rounded-lg transition-transform duration-200 ${
+                          key === "fish" ? "h-24 w-24" : "h-12 w-12"
+                        }`}
+                      >
                         <Image
                           src={getShopItemIcon(item)}
                           alt=""
