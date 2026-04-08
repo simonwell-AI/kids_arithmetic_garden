@@ -36,6 +36,28 @@ function skillKeyDiv(a: number, b: number): string {
   return `div_${a}_${b}`;
 }
 
+/** 一輪題組去重用：加／乘將 (a,b) 與 (b,a) 視為同一題；減／除順序有意義，不交換。 */
+export function questionDedupeKey(q: Question): string {
+  switch (q.op) {
+    case "add": {
+      const x = Math.min(q.a, q.b);
+      const y = Math.max(q.a, q.b);
+      return `add:${x},${y}`;
+    }
+    case "mul": {
+      const x = Math.min(q.a, q.b);
+      const y = Math.max(q.a, q.b);
+      return `mul:${x},${y}`;
+    }
+    case "sub":
+      return `sub:${q.a},${q.b}`;
+    case "div":
+      return `div:${q.a},${q.b}`;
+    default:
+      return `${q.op}:${q.a},${q.b}`;
+  }
+}
+
 export function generateQuestion(options: GenerateQuestionOptions): Question {
   const rangeMin = options.rangeMin ?? 0;
   const rangeMax = options.rangeMax;
@@ -160,14 +182,17 @@ export function generateQuestions(options: GenerateQuestionOptions): Question[] 
   const count = options.count ?? 10;
   const questions: Question[] = [];
   const seen = new Set<string>();
-  for (let i = 0; i < count; i++) {
+  const dedupe = count <= 100;
+  const maxAttempts = Math.max(count * 400, 2000);
+  let attempts = 0;
+  while (questions.length < count && attempts < maxAttempts) {
+    attempts += 1;
     const q = generateQuestion(options);
-    const key = `${q.a},${q.b},${q.op}`;
-    if (seen.has(key) && count <= 100) {
-      i--;
-      continue;
+    if (dedupe) {
+      const key = questionDedupeKey(q);
+      if (seen.has(key)) continue;
+      seen.add(key);
     }
-    seen.add(key);
     questions.push(q);
   }
   return questions;

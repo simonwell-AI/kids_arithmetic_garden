@@ -15,9 +15,9 @@ function buildMixedQuestions(): Question[] {
   return generateQuestions({
     operation: "mixed",
     rangeMin: 1,
-    rangeMax: 20,
+    rangeMax: 50,
     count: 10,
-    difficulty: "normal",
+    difficulty: "hard",
   });
 }
 
@@ -61,7 +61,7 @@ export function MixedSpeedQuiz({ onBack }: MixedSpeedQuizProps) {
     const totalAnswered = index + (showFeedback ? 0 : 1);
     if (totalAnswered < 1) return;
     hasAwardedRef.current = true;
-    awardCustomCompletionReward(correctCount, totalAnswered, 6).then((result) => {
+    awardCustomCompletionReward(correctCount, totalAnswered, 8).then((result) => {
       if (result.awarded) setRewardCoins(result.amount);
     });
   }, [phase, index, showFeedback, correctCount]);
@@ -116,7 +116,7 @@ export function MixedSpeedQuiz({ onBack }: MixedSpeedQuizProps) {
           綜合題速度測驗（60 秒）
         </h2>
         <p className="text-center text-gray-600">
-          60 秒內盡量答對更多加減乘除題，成功率 80% 給 6 代幣
+          60 秒內盡量答對更多加減乘除題，成功率 80% 給 8 代幣
         </p>
         {genError && (
           <p className="rounded-xl bg-rose-100 px-4 py-2 text-center text-sm font-semibold text-rose-800">
