@@ -14,7 +14,7 @@ import { addPlantedSeedId } from "./achievements";
 
 const MAX_GROWTH_STAGE = 4; // 0..4, 4 = 開花
 /** 開花後收成發放的代幣 */
-const HARVEST_BLOOM_COINS = 25;
+const HARVEST_BLOOM_COINS = 50;
 const GROWTH_PER_DAY_WATER = 0.2;
 const GROWTH_PER_DAY_FERTILIZER_BASIC = 0.3;
 const GROWTH_PER_DAY_FERTILIZER_PREMIUM = 0.5;

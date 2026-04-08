@@ -5,7 +5,7 @@ import { addCoins } from "./wallet";
 const FISH_MAX_STAGE = 5;
 const GROWTH_PER_FEED = 0.25;
 const GROWTH_PER_DAY_NATURAL = 0.06;
-const RELEASE_COINS = 20;
+const RELEASE_COINS = 50;
 
 async function getFishRecord(): Promise<FishRecord | null> {
   const db = await getDB();

@@ -4,7 +4,7 @@ import { addCoins } from "./wallet";
 
 const INSECT_MAX_STAGE = 5;
 /** 放生成蟲發放代幣 */
-const RELEASE_COINS = 20;
+const RELEASE_COINS = 50;
 
 /** 記錄「曾養過的昆蟲種類」的 key（存在同一個 STORE_INSECT） */
 const RAISED_INSECT_IDS_KEY = "raised_insect_ids";
