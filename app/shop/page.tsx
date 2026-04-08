@@ -217,7 +217,7 @@ function ShopPageContent() {
                 load();
                 setTimeout(() => setMessage(null), 1800);
               }}
-              className="min-h-[40px] rounded-xl border-2 border-amber-300 bg-amber-100 px-3 text-sm font-semibold text-amber-900 hover:bg-amber-200"
+              className="hidden min-h-[40px] rounded-xl border-2 border-amber-300 bg-amber-100 px-3 text-sm font-semibold text-amber-900 hover:bg-amber-200"
             >
               測試加金幣 +100
             </button>
